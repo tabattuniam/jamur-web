@@ -1,0 +1,588 @@
+{% extends "base.html" %}
+{% set active = "batch" %}
+{% block title %}{{ batch.kode }} — Detail Batch{% endblock %}
+{% block topbar_title %}Detail Batch: {{ batch.kode }}{% endblock %}
+
+{% block content %}
+{% set sl = status_label.get(batch.status, ('⚪','Unknown')) %}
+
+<div style="margin-bottom:16px;">
+  <a href="/batch" style="font-size:12px;color:#2E7D32;text-decoration:none;">← Kembali ke Batch</a>
+</div>
+
+<!-- Header Info -->
+<div class="card" style="margin-bottom:16px;border-left:4px solid #2E7D32;">
+  <div style="display:flex;align-items:start;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+    <div>
+      <div style="font-size:20px;font-weight:800;color:#1B5E20;">{{ batch.kode }}</div>
+      {% if batch.nama %}<div style="font-size:13px;color:#64748b;">{{ batch.nama }}</div>{% endif %}
+      <div style="font-size:12px;color:#94a3b8;margin-top:4px;">📅 Mulai: {{ batch.tanggal_mulai }}</div>
+    </div>
+    <span class="badge badge-{% if batch.status=='panen' %}green{% elif batch.status=='inkubasi' %}purple{% elif batch.status=='selesai' %}gray{% else %}yellow{% endif %}" style="font-size:13px;padding:6px 12px;">
+      {{ sl[0] }} {{ sl[1] }}
+    </span>
+  </div>
+</div>
+
+<!-- Stat Cards -->
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;margin-bottom:20px;">
+  <div class="stat-card">
+    <div style="font-size:11px;color:#64748b;font-weight:600;">Total Baglog Dibuat</div>
+    <div style="font-size:22px;font-weight:800;color:#1B5E20;">{{ analisis.jumlah_baglog }}</div>
+    <div style="font-size:10px;color:#94a3b8;">dari {{ pengisian_list|length }} sesi logging</div>
+  </div>
+  <div class="stat-card">
+    <div style="font-size:11px;color:#64748b;font-weight:600;">Total Disteril</div>
+    <div style="font-size:22px;font-weight:800;color:#991b1b;">{{ sterilisasi_list|sum(attribute='jumlah_baglog') }}</div>
+    <div style="font-size:10px;color:#94a3b8;">dari {{ sterilisasi_list|length }} sesi steril</div>
+  </div>
+  <div class="stat-card">
+    <div style="font-size:11px;color:#64748b;font-weight:600;">Total Dibibit</div>
+    <div style="font-size:22px;font-weight:800;color:#7e22ce;">{{ analisis.total_dibibit }}</div>
+    <div style="font-size:10px;color:#94a3b8;">dari {{ inokulasi_list|length }} sesi bibit</div>
+  </div>
+  <div class="stat-card">
+    <div style="font-size:11px;color:#64748b;font-weight:600;">Jual ke Mitra</div>
+    <div style="font-size:22px;font-weight:800;color:#1d4ed8;">{{ analisis.total_baglog_jual }}</div>
+    <div style="font-size:10px;color:#94a3b8;">baglog • {{ analisis.total_jual_baglog|rp }}</div>
+  </div>
+  <div class="stat-card">
+    <div style="font-size:11px;color:#64748b;font-weight:600;">Di Kumbung Sendiri</div>
+    <div style="font-size:22px;font-weight:800;color:#2E7D32;">{{ analisis.baglog_kumbung }}</div>
+    <div style="font-size:10px;color:#94a3b8;">baglog aktif</div>
+  </div>
+  <div class="stat-card">
+    <div style="font-size:11px;color:#64748b;font-weight:600;">Total Panen / Terjual</div>
+    <div style="font-size:22px;font-weight:800;color:#2E7D32;">{{ "%.1f"|format(analisis.total_panen_kg) }} kg</div>
+    <div style="font-size:10px;color:#94a3b8;">{{ "%.3f"|format(analisis.panen_per_baglog) }} kg/baglog</div>
+  </div>
+</div>
+
+<!-- Step Progress -->
+<div class="card" style="margin-bottom:16px;">
+  <h3 style="font-size:13px;font-weight:700;color:#1B5E20;margin-bottom:12px;">📋 Tahapan Produksi</h3>
+  {% set steps = ['pengadukan','pengisian','sterilisasi','inokulasi','inkubasi','panen','selesai'] %}
+  {% set step_labels = {'pengadukan':'Pengadukan','pengisian':'Logging','sterilisasi':'Sterilisasi','inokulasi':'Pembibitan','inkubasi':'Inkubasi','panen':'Panen','selesai':'Selesai'} %}
+  {% set cur_idx = steps.index(batch.status) if batch.status in steps else 0 %}
+  <div style="display:flex;align-items:center;gap:4px;margin-bottom:4px;overflow-x:auto;padding-bottom:4px;">
+    {% for s in steps %}
+    {% set i = loop.index0 %}
+    <div style="display:flex;align-items:center;gap:4px;">
+      <div style="min-width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;
+        {% if i < cur_idx %}background:#2E7D32;color:#fff;
+        {% elif i == cur_idx %}background:#FFC107;color:#000;
+        {% else %}background:#f1f5f9;color:#94a3b8;{% endif %}">{{ i+1 }}</div>
+      {% if not loop.last %}
+      <div style="width:16px;height:2px;background:{% if i < cur_idx %}#2E7D32{% else %}#e2e8f0{% endif %};flex-shrink:0;"></div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  <div style="display:flex;gap:4px;overflow-x:auto;">
+    {% for s in steps %}
+    {% set i = loop.index0 %}
+    <div style="min-width:48px;font-size:9px;text-align:center;color:{% if i <= cur_idx %}#1B5E20{% else %}#94a3b8{% endif %};font-weight:{% if i == cur_idx %}700{% else %}500{% endif %};">{{ step_labels[s] }}</div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Form tahap sesuai status -->
+<div class="card" style="margin-bottom:16px;">
+
+  {% if batch.status == 'pengadukan' %}
+  <h4 style="font-size:13px;font-weight:700;color:#1B5E20;margin-bottom:12px;">🌿 Input Pengadukan Media</h4>
+  <form method="post" action="/batch/{{ batch.id }}/pengadukan">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div>
+        <label class="form-label">Tanggal</label>
+        <input name="tanggal" type="date" required class="form-input" value="{{ now.strftime('%Y-%m-%d') }}">
+      </div>
+      <div>
+        <label class="form-label">Serbuk Gergaji (kg)</label>
+        <input name="serbuk" type="number" step="0.1" class="form-input" value="0">
+      </div>
+      <div>
+        <label class="form-label">Bekatul / Dedak (kg)</label>
+        <input name="bekatul" type="number" step="0.1" class="form-input" value="0">
+      </div>
+      <div>
+        <label class="form-label">Kapur (kg)</label>
+        <input name="kapur" type="number" step="0.1" class="form-input" value="0">
+      </div>
+      <div>
+        <label class="form-label">Air (liter)</label>
+        <input name="air" type="number" step="0.1" class="form-input" value="0">
+      </div>
+      <div>
+        <label class="form-label">Catatan</label>
+        <input name="catatan" class="form-input">
+      </div>
+    </div>
+    <button type="submit" class="btn-primary" style="margin-top:12px;">Simpan & Lanjut ke Logging →</button>
+  </form>
+
+  {% elif batch.status == 'pengisian' %}
+  <!-- MULTI-SESI LOGGING -->
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+    <h4 style="font-size:13px;font-weight:700;color:#1d4ed8;margin:0;">📦 Logging Baglog (Bertahap)</h4>
+    <div style="font-size:12px;color:#64748b;">Total: <b style="color:#1d4ed8;font-size:16px;">{{ pengisian_list|sum(attribute='jumlah_baglog') }}</b> baglog dari {{ pengisian_list|length }} sesi</div>
+  </div>
+
+  {% if pengisian_list %}
+  <div style="overflow-x:auto;margin-bottom:14px;">
+    <table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <thead>
+        <tr style="border-bottom:1px solid #e7f3e8;background:#f9fdf9;">
+          <th style="text-align:left;padding:7px 8px;color:#64748b;">Tanggal</th>
+          <th style="text-align:right;padding:7px 8px;color:#64748b;">Jumlah Baglog</th>
+          <th style="text-align:left;padding:7px 8px;color:#64748b;">Operator</th>
+          <th style="text-align:left;padding:7px 8px;color:#64748b;">Catatan</th>
+          <th style="padding:7px 8px;"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in pengisian_list %}
+        <tr style="border-bottom:1px solid #f0f4f0;">
+          <td style="padding:7px 8px;">{{ p.tanggal }}</td>
+          <td style="padding:7px 8px;text-align:right;font-weight:700;color:#1d4ed8;">{{ p.jumlah_baglog }}</td>
+          <td style="padding:7px 8px;color:#64748b;">{{ p.operator or '-' }}</td>
+          <td style="padding:7px 8px;color:#94a3b8;">{{ p.catatan or '-' }}</td>
+          <td style="padding:7px 8px;">
+            <form method="post" action="/batch/{{ batch.id }}/pengisian/{{ p.id }}/hapus" onsubmit="return confirm('Hapus sesi ini?')">
+              <button class="btn-danger" style="padding:3px 8px;font-size:11px;">🗑</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+        <tr style="background:#eff6ff;font-weight:700;border-top:2px solid #bfdbfe;">
+          <td style="padding:7px 8px;color:#1d4ed8;">Total</td>
+          <td style="padding:7px 8px;text-align:right;font-size:16px;color:#1d4ed8;">{{ pengisian_list|sum(attribute='jumlah_baglog') }}</td>
+          <td colspan="3"></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  <div style="background:#eff6ff;border-radius:10px;padding:14px;margin-bottom:12px;">
+    <div style="font-size:12px;font-weight:600;color:#1d4ed8;margin-bottom:10px;">+ Tambah Sesi Logging</div>
+    <form method="post" action="/batch/{{ batch.id }}/pengisian">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div>
+          <label class="form-label">Tanggal</label>
+          <input name="tanggal" type="date" required class="form-input" value="{{ now.strftime('%Y-%m-%d') }}">
+        </div>
+        <div>
+          <label class="form-label">Jumlah Baglog</label>
+          <input name="jumlah_baglog" type="number" required class="form-input" min="1" value="0">
+        </div>
+        <div>
+          <label class="form-label">Plastik (pcs)</label>
+          <input name="plastik" type="number" class="form-input" min="0" value="0">
+        </div>
+        <div>
+          <label class="form-label">Cincin (pcs)</label>
+          <input name="cincin" type="number" class="form-input" min="0" value="0">
+        </div>
+        <div>
+          <label class="form-label">Tutup Cincin (pcs)</label>
+          <input name="tutup" type="number" class="form-input" min="0" value="0">
+        </div>
+        <div>
+          <label class="form-label">Operator</label>
+          <input name="operator" class="form-input" placeholder="Nama operator">
+        </div>
+        <div style="grid-column:span 2;">
+          <label class="form-label">Catatan</label>
+          <input name="catatan" class="form-input" placeholder="Opsional">
+        </div>
+      </div>
+      <button type="submit" class="btn-primary" style="margin-top:10px;background:#1d4ed8;">+ Tambah Sesi</button>
+    </form>
+  </div>
+
+  {% if pengisian_list %}
+  <form method="post" action="/batch/{{ batch.id }}/lanjut/sterilisasi" onsubmit="return confirm('Logging selesai? Lanjut ke Sterilisasi?')">
+    <button type="submit" class="btn-primary">✅ Logging Selesai — Lanjut ke Sterilisasi →</button>
+  </form>
+  {% endif %}
+
+  {% elif batch.status == 'sterilisasi' %}
+  <!-- MULTI-SESI STERILISASI -->
+  {% set total_steril = sterilisasi_list|sum(attribute='jumlah_baglog') %}
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+    <h4 style="font-size:13px;font-weight:700;color:#991b1b;margin:0;">🔥 Sterilisasi (Bertahap)</h4>
+    <div style="font-size:12px;color:#64748b;">
+      Disteril: <b style="color:#991b1b;font-size:16px;">{{ total_steril }}</b>
+      / {{ analisis.jumlah_baglog }} baglog
+    </div>
+  </div>
+
+  {% if sterilisasi_list %}
+  <div style="overflow-x:auto;margin-bottom:14px;">
+    <table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <thead>
+        <tr style="border-bottom:1px solid #fecaca;background:#fff5f5;">
+          <th style="text-align:left;padding:7px 8px;color:#64748b;">Tanggal</th>
+          <th style="text-align:right;padding:7px 8px;color:#64748b;">Baglog</th>
+          <th style="text-align:left;padding:7px 8px;color:#64748b;">Jam</th>
+          <th style="text-align:right;padding:7px 8px;color:#64748b;">Suhu</th>
+          <th style="text-align:right;padding:7px 8px;color:#64748b;">Kayu Bakar</th>
+          <th style="text-align:right;padding:7px 8px;color:#64748b;">Biaya</th>
+          <th style="padding:7px 8px;"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in sterilisasi_list %}
+        <tr style="border-bottom:1px solid #f0f4f0;">
+          <td style="padding:7px 8px;">{{ s.tanggal }}</td>
+          <td style="padding:7px 8px;text-align:right;font-weight:700;color:#991b1b;">{{ s.jumlah_baglog }}</td>
+          <td style="padding:7px 8px;color:#64748b;font-size:11px;">
+            {% if s.jam_mulai %}{{ s.jam_mulai }}{% if s.jam_selesai %} – {{ s.jam_selesai }}{% endif %}{% else %}-{% endif %}
+          </td>
+          <td style="padding:7px 8px;text-align:right;color:#64748b;">{{ s.suhu or '-' }}{% if s.suhu %}°C{% endif %}</td>
+          <td style="padding:7px 8px;text-align:right;color:#64748b;">{{ s.kayu_bakar_kg or '-' }}{% if s.kayu_bakar_kg %} kg{% endif %}</td>
+          <td style="padding:7px 8px;text-align:right;color:#64748b;">{% if s.biaya_bahan_bakar %}{{ s.biaya_bahan_bakar|rp }}{% else %}-{% endif %}</td>
+          <td style="padding:7px 8px;">
+            <form method="post" action="/batch/{{ batch.id }}/sterilisasi/{{ s.id }}/hapus" onsubmit="return confirm('Hapus sesi ini?')">
+              <button class="btn-danger" style="padding:3px 8px;font-size:11px;">🗑</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+        <tr style="background:#fff5f5;font-weight:700;border-top:2px solid #fecaca;">
+          <td style="padding:7px 8px;color:#991b1b;">Total</td>
+          <td style="padding:7px 8px;text-align:right;font-size:15px;color:#991b1b;">{{ total_steril }}</td>
+          <td colspan="5"></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  <!-- Progress bar sterilisasi -->
+  {% if analisis.jumlah_baglog > 0 %}
+  {% set pct_steril = (total_steril / analisis.jumlah_baglog * 100)|round(1) %}
+  <div style="background:#f1f5f9;border-radius:99px;height:8px;margin-bottom:4px;overflow:hidden;">
+    <div style="height:100%;width:{{ [pct_steril,100]|min }}%;background:#991b1b;border-radius:99px;"></div>
+  </div>
+  <div style="font-size:11px;color:#64748b;margin-bottom:12px;">{{ pct_steril }}% baglog sudah disteril ({{ total_steril }}/{{ analisis.jumlah_baglog }})</div>
+  {% endif %}
+
+  <!-- Form tambah sesi sterilisasi -->
+  <div style="background:#fff5f5;border-radius:10px;padding:14px;margin-bottom:12px;">
+    <div style="font-size:12px;font-weight:600;color:#991b1b;margin-bottom:10px;">+ Tambah Sesi Sterilisasi</div>
+    <form method="post" action="/batch/{{ batch.id }}/sterilisasi">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div>
+          <label class="form-label">Tanggal</label>
+          <input name="tanggal" type="date" required class="form-input" value="{{ now.strftime('%Y-%m-%d') }}">
+        </div>
+        <div>
+          <label class="form-label">Jumlah Baglog Disteril</label>
+          <input name="jumlah_baglog" type="number" required class="form-input" min="1" placeholder="{{ analisis.jumlah_baglog - total_steril }}">
+        </div>
+        <div>
+          <label class="form-label">Jam Mulai</label>
+          <input name="jam_mulai" type="time" class="form-input">
+        </div>
+        <div>
+          <label class="form-label">Jam Selesai</label>
+          <input name="jam_selesai" type="time" class="form-input">
+        </div>
+        <div>
+          <label class="form-label">Durasi (jam)</label>
+          <input name="durasi" type="number" step="0.1" class="form-input" value="0">
+        </div>
+        <div>
+          <label class="form-label">Suhu (°C)</label>
+          <input name="suhu" type="number" step="0.1" class="form-input" value="0">
+        </div>
+        <div>
+          <label class="form-label">Kayu Bakar (kg) 🪵</label>
+          <input name="kayu_bakar_kg" type="number" step="0.1" class="form-input" value="0">
+        </div>
+        <div>
+          <label class="form-label">Biaya Bahan Bakar (Rp)</label>
+          <input name="biaya" type="number" class="form-input" value="0">
+        </div>
+      </div>
+      <button type="submit" class="btn-primary" style="margin-top:12px;background:#991b1b;">+ Catat Sesi Sterilisasi</button>
+    </form>
+  </div>
+
+  {% if sterilisasi_list %}
+  <form method="post" action="/batch/{{ batch.id }}/lanjut/inokulasi" onsubmit="return confirm('Sterilisasi selesai? Lanjut ke Pembibitan?')">
+    <button type="submit" class="btn-primary">✅ Sterilisasi Selesai — Lanjut ke Pembibitan →</button>
+  </form>
+  {% endif %}
+
+  {% elif batch.status == 'inokulasi' %}
+  <!-- MULTI-SESI PEMBIBITAN -->
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+    <h4 style="font-size:13px;font-weight:700;color:#5b21b6;margin:0;">🧫 Pembibitan / Inokulasi (Bertahap)</h4>
+    <div style="font-size:12px;color:#64748b;">
+      Dibibit: <b style="color:#5b21b6;font-size:16px;">{{ inokulasi_list|sum(attribute='jumlah_baglog') }}</b>
+      / {{ analisis.jumlah_baglog }} baglog
+    </div>
+  </div>
+
+  {% if inokulasi_list %}
+  <div style="overflow-x:auto;margin-bottom:14px;">
+    <table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <thead>
+        <tr style="border-bottom:1px solid #e7f3e8;background:#f9fdf9;">
+          <th style="text-align:left;padding:7px 8px;color:#64748b;">Tanggal</th>
+          <th style="text-align:right;padding:7px 8px;color:#64748b;">Jumlah</th>
+          <th style="text-align:left;padding:7px 8px;color:#64748b;">Jenis Bibit</th>
+          <th style="text-align:left;padding:7px 8px;color:#64748b;">Kode Bibit</th>
+          <th style="text-align:left;padding:7px 8px;color:#64748b;">Catatan</th>
+          <th style="padding:7px 8px;"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in inokulasi_list %}
+        <tr style="border-bottom:1px solid #f0f4f0;">
+          <td style="padding:7px 8px;">{{ p.tanggal }}</td>
+          <td style="padding:7px 8px;text-align:right;font-weight:700;color:#5b21b6;">{{ p.jumlah_baglog }}</td>
+          <td style="padding:7px 8px;color:#64748b;">{{ p.jenis_bibit or '-' }}</td>
+          <td style="padding:7px 8px;color:#64748b;">{{ p.kode_bibit or '-' }}</td>
+          <td style="padding:7px 8px;color:#94a3b8;">{{ p.catatan or '-' }}</td>
+          <td style="padding:7px 8px;">
+            <form method="post" action="/batch/{{ batch.id }}/inokulasi/{{ p.id }}/hapus" onsubmit="return confirm('Hapus sesi ini?')">
+              <button class="btn-danger" style="padding:3px 8px;font-size:11px;">🗑</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+        <tr style="background:#f5f3ff;font-weight:700;border-top:2px solid #ddd6fe;">
+          <td style="padding:7px 8px;color:#5b21b6;">Total</td>
+          <td style="padding:7px 8px;text-align:right;font-size:16px;color:#5b21b6;">{{ inokulasi_list|sum(attribute='jumlah_baglog') }}</td>
+          <td colspan="4"></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  <!-- Progress bar pembibitan -->
+  {% set total_baglog = analisis.jumlah_baglog %}
+  {% set total_dibibit = inokulasi_list|sum(attribute='jumlah_baglog') %}
+  {% if total_baglog > 0 %}
+  {% set pct = (total_dibibit / total_baglog * 100)|round(1) %}
+  <div style="background:#f1f5f9;border-radius:99px;height:8px;margin-bottom:4px;overflow:hidden;">
+    <div style="height:100%;width:{{ [pct,100]|min }}%;background:#7e22ce;border-radius:99px;"></div>
+  </div>
+  <div style="font-size:11px;color:#64748b;margin-bottom:12px;">{{ pct }}% baglog sudah dibibit ({{ total_dibibit }}/{{ total_baglog }})</div>
+  {% endif %}
+
+  <div style="background:#f5f3ff;border-radius:10px;padding:14px;margin-bottom:12px;">
+    <div style="font-size:12px;font-weight:600;color:#5b21b6;margin-bottom:10px;">+ Tambah Sesi Pembibitan</div>
+    <form method="post" action="/batch/{{ batch.id }}/inokulasi">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div>
+          <label class="form-label">Tanggal</label>
+          <input name="tanggal" type="date" required class="form-input" value="{{ now.strftime('%Y-%m-%d') }}">
+        </div>
+        <div>
+          <label class="form-label">Jumlah Baglog Dibibit</label>
+          <input name="jumlah_baglog" type="number" required class="form-input" min="1" value="0">
+        </div>
+        <div>
+          <label class="form-label">Bibit (botol)</label>
+          <input name="bibit_botol" type="number" step="0.5" class="form-input" min="0" value="0">
+        </div>
+        <div>
+          <label class="form-label">Alkohol (liter)</label>
+          <input name="alkohol_liter" type="number" step="0.1" class="form-input" min="0" value="0">
+        </div>
+        <div>
+          <label class="form-label">Karet Gelang (pcs)</label>
+          <input name="karet_pcs" type="number" class="form-input" min="0" value="0">
+        </div>
+        <div>
+          <label class="form-label">Kertas Koran (lembar)</label>
+          <input name="koran_lembar" type="number" class="form-input" min="0" value="0">
+        </div>
+        <div>
+          <label class="form-label">Jenis Bibit</label>
+          <input name="jenis_bibit" class="form-input" placeholder="F2, F3, dll">
+        </div>
+        <div>
+          <label class="form-label">Kode Bibit</label>
+          <input name="kode_bibit" class="form-input" placeholder="Kode identifikasi">
+        </div>
+        <div style="grid-column:span 2;">
+          <label class="form-label">Catatan</label>
+          <input name="catatan" class="form-input" placeholder="Opsional">
+        </div>
+      </div>
+      <button type="submit" class="btn-primary" style="margin-top:10px;background:#5b21b6;">+ Tambah Sesi</button>
+    </form>
+  </div>
+
+  {% if inokulasi_list %}
+  <form method="post" action="/batch/{{ batch.id }}/lanjut/inkubasi" onsubmit="return confirm('Pembibitan selesai? Lanjut ke Inkubasi?')">
+    <button type="submit" class="btn-primary" style="background:#5b21b6;">✅ Pembibitan Selesai — Lanjut ke Inkubasi →</button>
+  </form>
+  {% endif %}
+
+  {% elif batch.status == 'inkubasi' %}
+  <h4 style="font-size:13px;font-weight:700;color:#7e22ce;margin-bottom:12px;">⏳ Input Inkubasi</h4>
+  {% if inkubasi %}
+  <div style="background:#f0fdf4;border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:12px;">
+    ✅ Inkubasi tercatat: {{ inkubasi.tanggal_mulai }} → {{ inkubasi.tanggal_selesai or 'belum selesai' }} |
+    Baglog: {{ inkubasi.jumlah_baglog }} | Gagal: <span style="color:#dc2626;">{{ inkubasi.baglog_gagal }}</span> |
+    Sukses: <b style="color:#15803d;">{{ inkubasi.persentase_keberhasilan }}%</b>
+  </div>
+  {% endif %}
+  <form method="post" action="/batch/{{ batch.id }}/inkubasi">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div>
+        <label class="form-label">Tanggal Mulai</label>
+        <input name="tanggal_mulai" type="date" required class="form-input" value="{{ now.strftime('%Y-%m-%d') }}">
+      </div>
+      <div>
+        <label class="form-label">Tanggal Selesai (estimasi)</label>
+        <input name="tanggal_selesai" type="date" class="form-input">
+      </div>
+      <div>
+        <label class="form-label">Jumlah Baglog Masuk Inkubasi</label>
+        <input name="jumlah" type="number" required class="form-input" value="{{ analisis.total_dibibit }}">
+      </div>
+      <div>
+        <label class="form-label">Baglog Gagal / Kontaminasi</label>
+        <input name="gagal" type="number" class="form-input" value="0">
+      </div>
+    </div>
+    <button type="submit" class="btn-primary" style="margin-top:12px;background:#7e22ce;">Simpan & Tandai Siap Panen →</button>
+  </form>
+
+  {% elif batch.status == 'panen' %}
+  <div style="background:#f0fdf4;border-radius:10px;padding:16px;">
+    <h4 style="font-size:13px;font-weight:700;color:#15803d;margin-bottom:8px;">🍄 Fase Panen Aktif</h4>
+    <p style="font-size:12px;color:#374151;margin-bottom:12px;">
+      Panen setiap hari langsung dicatat di <b>Jual Jamur</b>. Pilih batch <b>{{ batch.kode }}</b> saat mencatat penjualan agar terhubung ke batch ini.
+    </p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <a href="/penjualan" class="btn-primary">🍄 Catat Penjualan Hari Ini</a>
+      <form method="post" action="/batch/{{ batch.id }}/lanjut/selesai" onsubmit="return confirm('Tandai batch ini selesai?')">
+        <button type="submit" class="btn-secondary">⚫ Batch Selesai</button>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+
+<!-- Penjualan Baglog (tampil saat inkubasi ke atas) -->
+{% if batch.status in ['inkubasi','panen','selesai'] %}
+<div class="card" style="margin-bottom:16px;">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+    <h3 style="font-size:13px;font-weight:700;color:#1B5E20;margin:0;">🌿 Penjualan Baglog ke Mitra</h3>
+    <span style="font-size:12px;color:#64748b;">Total: <b style="color:#1d4ed8;">{{ jual_baglog|sum(attribute='jumlah_baglog') }} baglog</b> • {{ jual_baglog|sum(attribute='total')|rp }}</span>
+  </div>
+
+  {% if jual_baglog %}
+  <div style="overflow-x:auto;margin-bottom:14px;">
+    <table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <thead>
+        <tr style="border-bottom:1px solid #e7f3e8;background:#f9fdf9;">
+          <th style="text-align:left;padding:7px 8px;color:#64748b;">Tanggal</th>
+          <th style="text-align:left;padding:7px 8px;color:#64748b;">Pembeli</th>
+          <th style="text-align:right;padding:7px 8px;color:#64748b;">Qty</th>
+          <th style="text-align:right;padding:7px 8px;color:#64748b;">Harga/baglog</th>
+          <th style="text-align:right;padding:7px 8px;color:#64748b;">Total</th>
+          <th style="text-align:left;padding:7px 8px;color:#64748b;">Status</th>
+          <th style="padding:7px 8px;"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for j in jual_baglog %}
+        <tr style="border-bottom:1px solid #f0f4f0;">
+          <td style="padding:7px 8px;">{{ j.tanggal }}</td>
+          <td style="padding:7px 8px;">{{ j.nama_pembeli or '-' }}</td>
+          <td style="padding:7px 8px;text-align:right;font-weight:700;color:#1d4ed8;">{{ j.jumlah_baglog }}</td>
+          <td style="padding:7px 8px;text-align:right;">{{ j.harga_per_baglog|rp }}</td>
+          <td style="padding:7px 8px;text-align:right;font-weight:700;color:#15803d;">{{ j.total|rp }}</td>
+          <td style="padding:7px 8px;">
+            <span class="badge badge-{% if j.status_bayar=='lunas' %}green{% else %}yellow{% endif %}">{{ j.status_bayar }}</span>
+          </td>
+          <td style="padding:7px 8px;">
+            <form method="post" action="/penjualan-baglog/{{ j.id }}/hapus" onsubmit="return confirm('Hapus?')">
+              <button class="btn-danger" style="padding:3px 8px;font-size:11px;">🗑</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  <div style="background:#eff6ff;border-radius:10px;padding:14px;">
+    <div style="font-size:12px;font-weight:600;color:#1d4ed8;margin-bottom:10px;">+ Jual Baglog ke Mitra</div>
+    <form method="post" action="/penjualan-baglog/tambah">
+      <input type="hidden" name="batch_id" value="{{ batch.id }}">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div>
+          <label class="form-label">Tanggal</label>
+          <input name="tanggal" type="date" required class="form-input" value="{{ now.strftime('%Y-%m-%d') }}">
+        </div>
+        <div>
+          <label class="form-label">Jumlah Baglog</label>
+          <input name="jumlah_baglog" type="number" required class="form-input" min="1" value="0">
+        </div>
+        <div>
+          <label class="form-label">Nama Pembeli / Mitra</label>
+          <input name="nama_pembeli" class="form-input" placeholder="Nama mitra">
+        </div>
+        <div>
+          <label class="form-label">No. HP</label>
+          <input name="nomor_hp" class="form-input" placeholder="Opsional">
+        </div>
+        <div>
+          <label class="form-label">Harga/Baglog (Rp)</label>
+          <input name="harga_per_baglog" type="number" required class="form-input" value="0">
+        </div>
+        <div>
+          <label class="form-label">Status Bayar</label>
+          <select name="status_bayar" class="form-input">
+            <option value="lunas">Lunas</option>
+            <option value="hutang">Hutang</option>
+          </select>
+        </div>
+        <div style="grid-column:span 2;">
+          <label class="form-label">Catatan</label>
+          <input name="catatan" class="form-input" placeholder="Opsional">
+        </div>
+      </div>
+      <button type="submit" class="btn-primary" style="margin-top:10px;">Simpan Penjualan Baglog</button>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+<!-- Riwayat Penjualan Terhubung Batch Ini -->
+{% set jual_jamur = [] %}
+{% if batch.status in ['panen','selesai'] %}
+<div class="card">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+    <h3 style="font-size:13px;font-weight:700;color:#1B5E20;margin:0;">💰 Penjualan Jamur — Batch Ini</h3>
+    <a href="/penjualan" class="btn-secondary" style="font-size:12px;">+ Catat Penjualan</a>
+  </div>
+  {% set penjualan_batch = analisis.total_panen_kg %}
+  {% if penjualan_batch > 0 %}
+  <div style="background:#f0fdf4;border-radius:8px;padding:10px 12px;font-size:13px;">
+    Total terjual dari batch ini: <b style="color:#2E7D32;">{{ "%.1f"|format(penjualan_batch) }} kg</b> —
+    <a href="/penjualan" style="color:#1d4ed8;text-decoration:none;font-size:12px;">Lihat di halaman Penjualan →</a>
+  </div>
+  {% else %}
+  <div style="text-align:center;padding:20px;color:#94a3b8;font-size:12px;">
+    Belum ada penjualan yang terhubung ke batch ini.<br>
+    Saat mencatat penjualan, pilih batch <b>{{ batch.kode }}</b>.
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

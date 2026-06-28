@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% set active = "users" %}
+{% block title %}Pengguna — Jamur Tiram{% endblock %}
+{% block topbar_title %}Manajemen Pengguna{% endblock %}
+
+{% block content %}
+<div style="display:flex;justify-content:flex-end;margin-bottom:16px;">
+  <button onclick="document.getElementById('modal-tambah').classList.remove('hidden')" class="btn-primary">+ Tambah Pengguna</button>
+</div>
+
+<div class="card">
+  <table style="width:100%;border-collapse:collapse;font-size:13px;">
+    <thead>
+      <tr style="border-bottom:1.5px solid #e7f3e8;">
+        <th style="text-align:left;padding:10px 8px;color:#64748b;">Nama</th>
+        <th style="text-align:left;padding:10px 8px;color:#64748b;">Username</th>
+        <th style="text-align:left;padding:10px 8px;color:#64748b;">Role</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for u in users %}
+      <tr style="border-bottom:1px solid #f0f4f0;">
+        <td style="padding:10px 8px;font-weight:600;">{{ u.nama }}</td>
+        <td style="padding:10px 8px;font-family:monospace;color:#64748b;">{{ u.username }}</td>
+        <td style="padding:10px 8px;">
+          <span class="badge {% if u.role=='admin' %}badge-red{% elif u.role=='owner' %}badge-blue{% else %}badge-green{% endif %}">
+            {{ u.role|capitalize }}
+          </span>
+        </td>
+        <td style="padding:10px 8px;text-align:right;">
+          <button onclick="openEdit(this)"
+            data-id="{{ u.id }}" data-nama="{{ u.nama|e }}" data-role="{{ u.role }}"
+            class="btn-secondary" style="font-size:11px;padding:4px 10px;margin-right:4px;">Edit</button>
+          <form method="post" action="/users/{{ u.id }}/hapus" style="display:inline;" onsubmit="return confirm('Hapus pengguna {{ u.nama }}?')">
+            <button class="btn-danger" style="font-size:11px;padding:4px 10px;">Hapus</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Modal Tambah -->
+<div id="modal-tambah" class="modal-overlay hidden">
+  <div style="background:#fff;border-radius:18px;width:100%;max-width:400px;padding:24px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+      <h3 style="font-size:15px;font-weight:700;color:#1B5E20;">Tambah Pengguna</h3>
+      <button onclick="document.getElementById('modal-tambah').classList.add('hidden')" style="background:none;border:none;font-size:20px;cursor:pointer;">×</button>
+    </div>
+    <form method="post" action="/users/tambah">
+      <div style="display:grid;gap:12px;">
+        <div><label class="form-label">Nama *</label><input name="nama" required class="form-input"></div>
+        <div><label class="form-label">Username *</label><input name="username" required class="form-input"></div>
+        <div><label class="form-label">Password *</label><input name="password" type="password" required class="form-input"></div>
+        <div>
+          <label class="form-label">Role</label>
+          <select name="role" class="form-input">
+            <option value="operator">Operator</option>
+            <option value="owner">Owner</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:18px;">
+        <button type="button" onclick="document.getElementById('modal-tambah').classList.add('hidden')" class="btn-secondary" style="flex:1;justify-content:center;">Batal</button>
+        <button type="submit" class="btn-primary" style="flex:1;justify-content:center;">Simpan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal Edit -->
+<div id="modal-edit" class="modal-overlay hidden">
+  <div style="background:#fff;border-radius:18px;width:100%;max-width:400px;padding:24px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+      <h3 style="font-size:15px;font-weight:700;color:#1B5E20;">Edit Pengguna</h3>
+      <button onclick="document.getElementById('modal-edit').classList.add('hidden')" style="background:none;border:none;font-size:20px;cursor:pointer;">×</button>
+    </div>
+    <form id="form-edit" method="post">
+      <div style="display:grid;gap:12px;">
+        <div><label class="form-label">Nama *</label><input id="e-nama" name="nama" required class="form-input"></div>
+        <div>
+          <label class="form-label">Role</label>
+          <select id="e-role" name="role" class="form-input">
+            <option value="operator">Operator</option>
+            <option value="owner">Owner</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+        <div><label class="form-label">Password Baru (kosongkan jika tidak diubah)</label><input name="password" type="password" class="form-input"></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:18px;">
+        <button type="button" onclick="document.getElementById('modal-edit').classList.add('hidden')" class="btn-secondary" style="flex:1;justify-content:center;">Batal</button>
+        <button type="submit" class="btn-primary" style="flex:1;justify-content:center;">Simpan</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openEdit(btn) {
+  const d = btn.dataset;
+  document.getElementById('form-edit').action = '/users/' + d.id + '/edit';
+  document.getElementById('e-nama').value = d.nama;
+  document.getElementById('e-role').value = d.role;
+  document.getElementById('modal-edit').classList.remove('hidden');
+}
+</script>
+{% endblock %}

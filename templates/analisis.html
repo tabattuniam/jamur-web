@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+{% set active = "analisis" %}
+{% block title %}Analisis Usaha — Jamur Tiram{% endblock %}
+{% block topbar_title %}Analisis Usaha{% endblock %}
+
+{% block content %}
+<!-- Filter Tahun -->
+<div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap;">
+  <span style="font-size:13px;color:#374151;font-weight:600;">Tahun:</span>
+  <form method="get" style="display:flex;gap:8px;">
+    <select name="tahun" onchange="this.form.submit()"
+      style="border:1.5px solid #c8e6c9;border-radius:8px;padding:6px 12px;font-size:13px;color:#1B5E20;background:#f0fdf4;outline:none;cursor:pointer;">
+      {% for y in range(now.year, now.year-4, -1) %}
+      <option value="{{ y }}" {% if tahun==y|string %}selected{% endif %}>{{ y }}</option>
+      {% endfor %}
+    </select>
+  </form>
+</div>
+
+<!-- KPI Utama -->
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;margin-bottom:24px;">
+  <div class="stat-card">
+    <div style="font-size:11px;color:#64748b;font-weight:600;margin-bottom:4px;">🍄 Total Panen</div>
+    <div style="font-size:24px;font-weight:800;color:#2E7D32;">{{ "%.1f"|format(data.total_panen_kg) }}</div>
+    <div style="font-size:11px;color:#94a3b8;">kg tahun {{ tahun }}</div>
+  </div>
+  <div class="stat-card">
+    <div style="font-size:11px;color:#64748b;font-weight:600;margin-bottom:4px;">💰 Total Penjualan</div>
+    <div style="font-size:19px;font-weight:800;color:#1d4ed8;">{{ data.total_jual|rp }}</div>
+    <div style="font-size:11px;color:#94a3b8;">tahun {{ tahun }}</div>
+  </div>
+  <div class="stat-card">
+    <div style="font-size:11px;color:#64748b;font-weight:600;margin-bottom:4px;">📤 Total Pengeluaran</div>
+    <div style="font-size:19px;font-weight:800;color:#dc2626;">{{ data.total_biaya|rp }}</div>
+    <div style="font-size:11px;color:#94a3b8;">tahun {{ tahun }}</div>
+  </div>
+  <div class="stat-card" style="border:2px solid {% if data.laba_bersih >= 0 %}#bbf7d0{% else %}#fecaca{% endif %};">
+    <div style="font-size:11px;color:#64748b;font-weight:600;margin-bottom:4px;">📊 Laba Bersih</div>
+    <div style="font-size:19px;font-weight:800;color:{% if data.laba_bersih >= 0 %}#15803d{% else %}#dc2626{% endif %};">{{ data.laba_bersih|rp }}</div>
+    <div style="font-size:11px;color:#94a3b8;">tahun {{ tahun }}</div>
+  </div>
+  <div class="stat-card">
+    <div style="font-size:11px;color:#64748b;font-weight:600;margin-bottom:4px;">🌿 Total Baglog</div>
+    <div style="font-size:24px;font-weight:800;color:#1B5E20;">{{ data.total_baglog }}</div>
+    <div style="font-size:11px;color:#94a3b8;">baglog diproduksi</div>
+  </div>
+  <div class="stat-card">
+    <div style="font-size:11px;color:#64748b;font-weight:600;margin-bottom:4px;">⚡ Produktivitas</div>
+    <div style="font-size:24px;font-weight:800;color:#7e22ce;">{{ "%.2f"|format(data.produktivitas) }}</div>
+    <div style="font-size:11px;color:#94a3b8;">kg/baglog rata-rata</div>
+  </div>
+</div>
+
+<!-- BEP & ROI -->
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;">
+
+  <!-- BEP Card -->
+  <div class="card" style="border-top:3px solid #FFC107;">
+    <div style="font-size:14px;font-weight:700;color:#1B5E20;margin-bottom:14px;">📍 Break Even Point (BEP)</div>
+    <table style="width:100%;border-collapse:collapse;font-size:13px;">
+      <tr style="border-bottom:1px solid #f0f4f0;">
+        <td style="padding:8px 0;color:#64748b;">Harga Jual Rata-rata</td>
+        <td style="padding:8px 0;text-align:right;font-weight:700;">{{ data.harga_rata|rp }}/kg</td>
+      </tr>
+      <tr style="border-bottom:1px solid #f0f4f0;">
+        <td style="padding:8px 0;color:#64748b;">Biaya Variabel/kg</td>
+        <td style="padding:8px 0;text-align:right;font-weight:700;color:#dc2626;">{{ data.biaya_var_per_kg|rp }}/kg</td>
+      </tr>
+      <tr style="border-bottom:1px solid #f0f4f0;">
+        <td style="padding:8px 0;color:#64748b;">Margin Kontribusi/kg</td>
+        <td style="padding:8px 0;text-align:right;font-weight:700;color:#2E7D32;">{{ (data.harga_rata - data.biaya_var_per_kg)|rp }}/kg</td>
+      </tr>
+      <tr style="border-bottom:1px solid #f0f4f0;">
+        <td style="padding:8px 0;color:#64748b;">Biaya Tetap (Operasional)</td>
+        <td style="padding:8px 0;text-align:right;">{{ (data.total_biaya - (data.biaya_var_per_kg * data.total_panen_kg))|rp }}</td>
+      </tr>
+      <tr style="background:#fffbeb;border-radius:8px;">
+        <td style="padding:10px 8px;font-weight:700;color:#92400e;">BEP (Volume)</td>
+        <td style="padding:10px 8px;text-align:right;font-weight:800;font-size:15px;color:#92400e;">{{ "%.1f"|format(data.bep_kg) }} kg</td>
+      </tr>
+      <tr style="background:#fffbeb;">
+        <td style="padding:4px 8px 10px;font-weight:700;color:#92400e;">BEP (Rupiah)</td>
+        <td style="padding:4px 8px 10px;text-align:right;font-weight:800;color:#92400e;">{{ data.bep_rupiah|rp }}</td>
+      </tr>
+    </table>
+    {% if data.total_panen_kg > 0 and data.bep_kg > 0 %}
+    <div style="margin-top:12px;background:#f0fdf4;border-radius:8px;padding:10px 12px;font-size:12px;">
+      {% set pct = (data.total_panen_kg / data.bep_kg * 100)|round(1) %}
+      {% if data.total_panen_kg >= data.bep_kg %}
+      ✅ Sudah melampaui BEP — <b>{{ pct }}%</b> dari target
+      {% else %}
+      ⚠️ Baru mencapai <b>{{ pct }}%</b> dari BEP. Butuh tambahan <b>{{ "%.1f"|format(data.bep_kg - data.total_panen_kg) }} kg</b> lagi.
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- ROI Card -->
+  <div class="card" style="border-top:3px solid #2E7D32;">
+    <div style="font-size:14px;font-weight:700;color:#1B5E20;margin-bottom:14px;">📈 Return on Investment (ROI)</div>
+
+    <!-- ROI Gauge -->
+    <div style="text-align:center;margin-bottom:16px;">
+      <div style="font-size:52px;font-weight:900;color:{% if data.roi >= 0 %}#2E7D32{% else %}#dc2626{% endif %};">
+        {{ "%.1f"|format(data.roi) }}%
+      </div>
+      <div style="font-size:13px;color:#64748b;margin-top:4px;">
+        {% if data.roi >= 30 %}🔥 ROI Sangat Baik
+        {% elif data.roi >= 15 %}✅ ROI Baik
+        {% elif data.roi >= 0 %}⚠️ ROI Rendah
+        {% else %}❌ Merugi{% endif %}
+      </div>
+    </div>
+
+    <!-- Progress bar -->
+    {% set roi_pct = [[data.roi, 100]|min, 0]|max %}
+    <div style="background:#f1f5f9;border-radius:99px;height:10px;margin-bottom:14px;overflow:hidden;">
+      <div style="height:100%;width:{{ roi_pct }}%;background:{% if data.roi >= 30 %}#2E7D32{% elif data.roi >= 15 %}#FFC107{% elif data.roi >= 0 %}#fb923c{% else %}#dc2626{% endif %};border-radius:99px;transition:width .5s;"></div>
+    </div>
+
+    <table style="width:100%;border-collapse:collapse;font-size:13px;">
+      <tr style="border-bottom:1px solid #f0f4f0;">
+        <td style="padding:8px 0;color:#64748b;">Total Modal</td>
+        <td style="padding:8px 0;text-align:right;font-weight:700;">{{ data.total_biaya|rp }}</td>
+      </tr>
+      <tr style="border-bottom:1px solid #f0f4f0;">
+        <td style="padding:8px 0;color:#64748b;">Total Pendapatan</td>
+        <td style="padding:8px 0;text-align:right;font-weight:700;color:#1d4ed8;">{{ data.total_jual|rp }}</td>
+      </tr>
+      <tr>
+        <td style="padding:8px 0;color:#64748b;">Laba Bersih</td>
+        <td style="padding:8px 0;text-align:right;font-weight:700;color:{% if data.laba_bersih >= 0 %}#15803d{% else %}#dc2626{% endif %};">{{ data.laba_bersih|rp }}</td>
+      </tr>
+    </table>
+
+    <div style="margin-top:12px;background:#f0fdf4;border-radius:8px;padding:10px 12px;font-size:12px;color:#374151;">
+      ROI = Laba Bersih ÷ Total Modal × 100%<br>
+      = {{ data.laba_bersih|rp }} ÷ {{ data.total_biaya|rp }} × 100% = <b>{{ "%.1f"|format(data.roi) }}%</b>
+    </div>
+  </div>
+</div>
+
+<!-- Analisis Per Batch -->
+<div class="card">
+  <div style="font-size:14px;font-weight:700;color:#1B5E20;margin-bottom:14px;">🧪 Analisis Per Batch — {{ tahun }}</div>
+  {% if data.batch_analisis %}
+  <div style="overflow-x:auto;">
+    <table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <thead>
+        <tr style="border-bottom:1.5px solid #e7f3e8;background:#f9fdf9;">
+          <th style="text-align:left;padding:10px 8px;color:#64748b;font-weight:600;">Batch</th>
+          <th style="text-align:left;padding:10px 8px;color:#64748b;font-weight:600;">Tgl Mulai</th>
+          <th style="text-align:right;padding:10px 8px;color:#64748b;font-weight:600;">Baglog</th>
+          <th style="text-align:right;padding:10px 8px;color:#64748b;font-weight:600;">Gagal</th>
+          <th style="text-align:right;padding:10px 8px;color:#64748b;font-weight:600;">% Sukses</th>
+          <th style="text-align:right;padding:10px 8px;color:#64748b;font-weight:600;">Panen (kg)</th>
+          <th style="text-align:right;padding:10px 8px;color:#64748b;font-weight:600;">kg/Baglog</th>
+          <th style="text-align:left;padding:10px 8px;color:#64748b;font-weight:600;">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for b in data.batch_analisis %}
+        <tr style="border-bottom:1px solid #f0f4f0;" class="hover:bg-green-50">
+          <td style="padding:9px 8px;">
+            <div style="font-weight:700;color:#1B5E20;">{{ b.kode }}</div>
+            {% if b.nama %}<div style="font-size:11px;color:#94a3b8;">{{ b.nama }}</div>{% endif %}
+          </td>
+          <td style="padding:9px 8px;color:#64748b;">{{ b.tanggal_mulai }}</td>
+          <td style="padding:9px 8px;text-align:right;font-weight:600;">{{ b.baglog }}</td>
+          <td style="padding:9px 8px;text-align:right;color:{% if b.baglog_gagal > 0 %}#dc2626{% else %}#94a3b8{% endif %};">{{ b.baglog_gagal }}</td>
+          <td style="padding:9px 8px;text-align:right;">
+            {% if b.persen_sukses > 0 %}
+            <span style="color:{% if b.persen_sukses >= 90 %}#15803d{% elif b.persen_sukses >= 70 %}#b45309{% else %}#dc2626{% endif %};font-weight:700;">
+              {{ "%.1f"|format(b.persen_sukses) }}%
+            </span>
+            {% else %}-{% endif %}
+          </td>
+          <td style="padding:9px 8px;text-align:right;font-weight:700;color:#2E7D32;">
+            {% if b.panen_kg > 0 %}{{ "%.1f"|format(b.panen_kg) }}{% else %}-{% endif %}
+          </td>
+          <td style="padding:9px 8px;text-align:right;">
+            {% if b.panen_per_baglog > 0 %}
+            <span style="color:{% if b.panen_per_baglog >= 0.4 %}#15803d{% elif b.panen_per_baglog >= 0.2 %}#b45309{% else %}#dc2626{% endif %};font-weight:600;">
+              {{ "%.3f"|format(b.panen_per_baglog) }}
+            </span>
+            {% else %}-{% endif %}
+          </td>
+          <td style="padding:9px 8px;">
+            {% set sl = status_label.get(b.status, ('⚪','?')) %}
+            <span class="badge badge-{% if b.status=='panen' %}green{% elif b.status=='inkubasi' %}purple{% elif b.status=='selesai' %}gray{% else %}yellow{% endif %}">
+              {{ sl[0] }} {{ sl[1] }}
+            </span>
+          </td>
+        </tr>
+        {% endfor %}
+        <!-- Baris Total -->
+        <tr style="background:#f0fdf4;font-weight:700;border-top:2px solid #c8e6c9;">
+          <td style="padding:10px 8px;color:#1B5E20;">Total / Rata-rata</td>
+          <td></td>
+          <td style="padding:10px 8px;text-align:right;">{{ data.total_baglog }}</td>
+          <td style="padding:10px 8px;text-align:right;color:#dc2626;">{{ data.batch_analisis|sum(attribute='baglog_gagal') }}</td>
+          <td style="padding:10px 8px;text-align:right;">
+            {% set total_bl = data.batch_analisis|sum(attribute='baglog') %}
+            {% set total_gagal = data.batch_analisis|sum(attribute='baglog_gagal') %}
+            {% if total_bl > 0 %}{{ "%.1f"|format((total_bl - total_gagal) / total_bl * 100) }}%{% endif %}
+          </td>
+          <td style="padding:10px 8px;text-align:right;color:#2E7D32;">{{ "%.1f"|format(data.total_panen_kg) }} kg</td>
+          <td style="padding:10px 8px;text-align:right;color:#7e22ce;">{{ "%.3f"|format(data.produktivitas) }}</td>
+          <td></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div style="text-align:center;padding:32px;color:#94a3b8;">
+    <div style="font-size:32px;margin-bottom:8px;">📊</div>
+    <p>Belum ada data batch untuk tahun {{ tahun }}</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

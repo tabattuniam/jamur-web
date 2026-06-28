@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% set active = "batch" %}
+{% block title %}Batch Produksi — Jamur Tiram{% endblock %}
+{% block topbar_title %}Batch Produksi{% endblock %}
+
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
+  <div style="display:flex;gap:6px;flex-wrap:wrap;">
+    <a href="/batch" class="btn-secondary {% if not filter_status %}active{% endif %}" style="font-size:12px;padding:6px 12px;">Semua</a>
+    {% for s, (icon, label) in status_label.items() %}
+    <a href="/batch?status={{ s }}" class="btn-secondary" style="font-size:12px;padding:6px 12px;{% if filter_status==s %}background:#e8f5e9;border-color:#2E7D32;{% endif %}">{{ icon }} {{ label }}</a>
+    {% endfor %}
+  </div>
+  <button onclick="document.getElementById('modal-tambah').classList.remove('hidden')" class="btn-primary">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+    Batch Baru
+  </button>
+</div>
+
+{% if batches %}
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;">
+  {% for b in batches %}
+  {% set sl = status_label.get(b.status, ('⚪','Unknown')) %}
+  <div class="card" style="border-top:3px solid #2E7D32;">
+    <div style="display:flex;align-items:start;justify-content:space-between;margin-bottom:10px;">
+      <div>
+        <a href="/batch/{{ b.id }}" style="font-size:15px;font-weight:700;color:#1B5E20;text-decoration:none;">{{ b.kode }}</a>
+        {% if b.nama %}<div style="font-size:12px;color:#64748b;">{{ b.nama }}</div>{% endif %}
+      </div>
+      <span class="badge badge-{% if b.status=='panen' %}green{% elif b.status=='inkubasi' %}purple{% elif b.status=='selesai' %}gray{% else %}yellow{% endif %}">
+        {{ sl[0] }} {{ sl[1] }}
+      </span>
+    </div>
+    <div style="font-size:12px;color:#64748b;margin-bottom:12px;">📅 Mulai: {{ b.tanggal_mulai }}</div>
+    {% if b.catatan %}<div style="font-size:11px;color:#94a3b8;margin-bottom:10px;">{{ b.catatan }}</div>{% endif %}
+    <div style="display:flex;gap:8px;">
+      <a href="/batch/{{ b.id }}" class="btn-primary" style="font-size:12px;padding:6px 12px;flex:1;justify-content:center;">Detail</a>
+      <button onclick="openEdit(this)"
+        data-id="{{ b.id }}" data-kode="{{ b.kode|e }}" data-nama="{{ b.nama|e }}"
+        data-tgl="{{ b.tanggal_mulai }}" data-status="{{ b.status }}" data-catatan="{{ b.catatan|e }}"
+        class="btn-secondary" style="font-size:12px;padding:6px 10px;">✏️</button>
+      <form method="post" action="/batch/{{ b.id }}/hapus" onsubmit="return confirm('Hapus batch {{ b.kode }}?')">
+        <button class="btn-danger" style="font-size:12px;padding:6px 10px;">🗑</button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="card" style="text-align:center;padding:48px;">
+  <div style="font-size:48px;margin-bottom:12px;">🌱</div>
+  <p style="color:#64748b;font-weight:600;">Belum ada batch produksi</p>
+  <button onclick="document.getElementById('modal-tambah').classList.remove('hidden')"
+    class="btn-primary" style="margin-top:16px;">Buat Batch Pertama</button>
+</div>
+{% endif %}
+
+<!-- Modal Tambah -->
+<div id="modal-tambah" class="modal-overlay hidden">
+  <div style="background:#fff;border-radius:18px;width:100%;max-width:440px;padding:24px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+      <h3 style="font-size:15px;font-weight:700;color:#1B5E20;">🌱 Batch Produksi Baru</h3>
+      <button onclick="document.getElementById('modal-tambah').classList.add('hidden')" style="background:none;border:none;font-size:20px;cursor:pointer;color:#94a3b8;">×</button>
+    </div>
+    <form method="post" action="/batch/tambah">
+      <div style="display:grid;gap:12px;">
+        <div>
+          <label class="form-label">Kode Batch *</label>
+          <input name="kode" required placeholder="Contoh: B001" class="form-input">
+        </div>
+        <div>
+          <label class="form-label">Nama / Keterangan</label>
+          <input name="nama" placeholder="Opsional" class="form-input">
+        </div>
+        <div>
+          <label class="form-label">Tanggal Mulai *</label>
+          <input name="tanggal_mulai" type="date" required class="form-input" value="{{ now.strftime('%Y-%m-%d') }}">
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:18px;">
+        <button type="button" onclick="document.getElementById('modal-tambah').classList.add('hidden')" class="btn-secondary" style="flex:1;justify-content:center;">Batal</button>
+        <button type="submit" class="btn-primary" style="flex:1;justify-content:center;">Simpan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal Edit -->
+<div id="modal-edit" class="modal-overlay hidden">
+  <div style="background:#fff;border-radius:18px;width:100%;max-width:440px;padding:24px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+      <h3 style="font-size:15px;font-weight:700;color:#1B5E20;">✏️ Edit Batch</h3>
+      <button onclick="document.getElementById('modal-edit').classList.add('hidden')" style="background:none;border:none;font-size:20px;cursor:pointer;color:#94a3b8;">×</button>
+    </div>
+    <form id="form-edit" method="post">
+      <div style="display:grid;gap:12px;">
+        <div>
+          <label class="form-label">Kode Batch *</label>
+          <input id="e-kode" name="kode" required class="form-input">
+        </div>
+        <div>
+          <label class="form-label">Nama</label>
+          <input id="e-nama" name="nama" class="form-input">
+        </div>
+        <div>
+          <label class="form-label">Tanggal Mulai *</label>
+          <input id="e-tgl" name="tanggal_mulai" type="date" required class="form-input">
+        </div>
+        <div>
+          <label class="form-label">Status</label>
+          <select id="e-status" name="status" class="form-input">
+            {% for s, (icon, label) in status_label.items() %}
+            <option value="{{ s }}">{{ icon }} {{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="form-label">Catatan</label>
+          <textarea id="e-catatan" name="catatan" rows="2" class="form-input"></textarea>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:18px;">
+        <button type="button" onclick="document.getElementById('modal-edit').classList.add('hidden')" class="btn-secondary" style="flex:1;justify-content:center;">Batal</button>
+        <button type="submit" class="btn-primary" style="flex:1;justify-content:center;">Simpan</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openEdit(btn) {
+  const d = btn.dataset;
+  document.getElementById('form-edit').action = '/batch/' + d.id + '/edit';
+  document.getElementById('e-kode').value = d.kode;
+  document.getElementById('e-nama').value = d.nama;
+  document.getElementById('e-tgl').value = d.tgl;
+  document.getElementById('e-status').value = d.status;
+  document.getElementById('e-catatan').value = d.catatan;
+  document.getElementById('modal-edit').classList.remove('hidden');
+}
+</script>
+{% endblock %}

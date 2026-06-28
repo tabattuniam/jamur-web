@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}Jamur Tiram{% endblock %}</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  :root { --green: #2E7D32; --green-l: #81C784; --yellow: #FFC107; }
+  body { font-family: 'Inter', system-ui, sans-serif; background: #f0f4f0; }
+  .sidebar { background: #1B5E20; min-height: 100vh; width: 220px; position: fixed; left: 0; top: 0; z-index: 50; transition: transform .2s ease; }
+  .sidebar-link { display: flex; align-items: center; gap: 10px; padding: 10px 16px; color: #c8e6c9; font-size: 13px; font-weight: 500; border-radius: 8px; margin: 2px 8px; transition: all .15s; text-decoration: none; }
+  .sidebar-link:hover, .sidebar-link.active { background: #2E7D32; color: #fff; }
+  .sidebar-link svg { width: 17px; height: 17px; flex-shrink: 0; }
+  #main-content { margin-left: 220px; }
+  .card { background: #fff; border-radius: 14px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+  .btn-primary { display: inline-flex; align-items: center; gap: 6px; background: #2E7D32; color: #fff; font-size: 13px; font-weight: 600; padding: 8px 16px; border-radius: 9px; border: none; cursor: pointer; text-decoration: none; transition: background .15s; }
+  .btn-primary:hover { background: #1B5E20; }
+  .btn-secondary { display: inline-flex; align-items: center; gap: 6px; background: #f1f5f1; color: #2E7D32; font-size: 13px; font-weight: 600; padding: 8px 16px; border-radius: 9px; border: 1px solid #c8e6c9; cursor: pointer; text-decoration: none; transition: all .15s; }
+  .btn-secondary:hover { background: #e8f5e9; }
+  .btn-danger { display: inline-flex; align-items: center; gap: 6px; background: #fef2f2; color: #dc2626; font-size: 13px; font-weight: 600; padding: 8px 14px; border-radius: 9px; border: 1px solid #fecaca; cursor: pointer; transition: all .15s; }
+  .btn-danger:hover { background: #fee2e2; }
+  .form-input { width: 100%; border: 1px solid #d1d5db; border-radius: 8px; padding: 8px 12px; font-size: 13px; color: #1e293b; outline: none; }
+  .form-input:focus { border-color: #2E7D32; box-shadow: 0 0 0 3px rgba(46,125,50,.1); }
+  .form-label { display: block; font-size: 12px; font-weight: 600; color: #374151; margin-bottom: 4px; }
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 16px; }
+  .badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 6px; }
+  .badge-green { background: #dcfce7; color: #15803d; }
+  .badge-yellow { background: #fef9c3; color: #854d0e; }
+  .badge-red { background: #fee2e2; color: #b91c1c; }
+  .badge-blue { background: #dbeafe; color: #1d4ed8; }
+  .badge-purple { background: #f3e8ff; color: #7e22ce; }
+  .badge-gray { background: #f1f5f9; color: #64748b; }
+  .stat-card { background: #fff; border-radius: 14px; padding: 18px 20px; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+  #sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 40; }
+  #btn-hamburger { display: none; }
+  @media (max-width: 768px) {
+    .sidebar { transform: translateX(-100%); }
+    .sidebar.open { transform: translateX(0); }
+    #main-content { margin-left: 0 !important; }
+    #btn-hamburger { display: flex; }
+    #sidebar-overlay.open { display: block; }
+    #btn-close-sidebar { display: flex !important; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Sidebar Overlay -->
+<div id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+<!-- Sidebar -->
+<div class="sidebar" id="sidebar">
+  <div style="padding:16px 16px 12px;border-bottom:1px solid rgba(255,255,255,.1);">
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <div style="font-size:15px;font-weight:800;color:#fff;letter-spacing:-.3px;">🍄 Jamur Tiram</div>
+        <div style="font-size:10px;color:#a5d6a7;margin-top:1px;">Sistem Produksi & Keuangan</div>
+      </div>
+      <button id="btn-close-sidebar" onclick="closeSidebar()" style="display:none;background:rgba(255,255,255,.1);border:none;border-radius:7px;padding:6px;cursor:pointer;color:#fff;">
+        <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <nav style="padding:8px 0;overflow-y:auto;">
+    <div style="padding:8px 16px 4px;font-size:10px;color:#66bb6a;font-weight:700;text-transform:uppercase;letter-spacing:.5px;">Menu</div>
+
+    <a href="/" class="sidebar-link {% if active=='dashboard' %}active{% endif %}">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+      Dashboard
+    </a>
+
+    <div style="padding:8px 16px 4px;font-size:10px;color:#66bb6a;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-top:4px;">Produksi</div>
+
+    <a href="/batch" class="sidebar-link {% if active=='batch' %}active{% endif %}">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+      Batch Produksi
+    </a>
+
+    <a href="/panen" class="sidebar-link {% if active=='panen' %}active{% endif %}">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+      Panen
+    </a>
+
+    <div style="padding:8px 16px 4px;font-size:10px;color:#66bb6a;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-top:4px;">Keuangan</div>
+
+    <a href="/penjualan" class="sidebar-link {% if active=='penjualan' %}active{% endif %}">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+      Jual Jamur
+    </a>
+
+    <a href="/penjualan-baglog" class="sidebar-link {% if active=='penjualan_baglog' %}active{% endif %}">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/></svg>
+      Jual Baglog
+    </a>
+
+    <a href="/stok" class="sidebar-link {% if active=='stok' %}active{% endif %}">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+      Stok Bahan
+    </a>
+
+    <a href="/keuangan" class="sidebar-link {% if active=='keuangan' %}active{% endif %}">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+      Pengeluaran
+    </a>
+
+    <a href="/piutang" class="sidebar-link {% if active=='piutang' %}active{% endif %}">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      Piutang
+    </a>
+
+    <a href="/laporan" class="sidebar-link {% if active=='laporan' %}active{% endif %}">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+      Laporan
+    </a>
+
+    <a href="/analisis" class="sidebar-link {% if active=='analisis' %}active{% endif %}">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+      Analisis Usaha
+    </a>
+
+    {% if user and user.role == 'admin' %}
+    <div style="padding:8px 16px 4px;font-size:10px;color:#66bb6a;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-top:4px;">Admin</div>
+    <a href="/users" class="sidebar-link {% if active=='users' %}active{% endif %}">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+      Pengguna
+    </a>
+    {% endif %}
+  </nav>
+
+  <div style="position:absolute;bottom:0;left:0;right:0;padding:12px 16px;border-top:1px solid rgba(255,255,255,.1);">
+    {% if user %}
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <div style="font-size:12px;font-weight:600;color:#fff;">{{ user.nama }}</div>
+        <div style="font-size:10px;color:#a5d6a7;">{{ user.role|capitalize }}</div>
+      </div>
+      <a href="/logout" style="color:#ef9a9a;font-size:11px;text-decoration:none;">Keluar</a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Main -->
+<div id="main-content">
+  <!-- Topbar -->
+  <div style="background:#fff;border-bottom:1px solid #e7f3e8;padding:12px 24px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:30;">
+    <button id="btn-hamburger" onclick="openSidebar()" style="background:#f0f4f0;border:none;border-radius:8px;padding:7px;cursor:pointer;color:#2E7D32;">
+      <svg style="width:18px;height:18px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 6h16M4 12h16M4 18h16"/></svg>
+    </button>
+    <h1 style="font-size:15px;font-weight:700;color:#1B5E20;flex:1;">{% block topbar_title %}{% endblock %}</h1>
+    <span style="font-size:11px;color:#94a3b8;">{{ now.strftime('%d %b %Y') }}</span>
+  </div>
+
+  <div style="padding:20px 24px;">
+    {% block content %}{% endblock %}
+  </div>
+</div>
+
+{% block scripts %}{% endblock %}
+
+<script>
+function openSidebar() {
+  document.getElementById('sidebar').classList.add('open');
+  document.getElementById('sidebar-overlay').classList.add('open');
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebar-overlay').classList.remove('open');
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% set active = "laporan" %}
+{% block title %}Laporan — Jamur Tiram{% endblock %}
+{% block topbar_title %}Laporan Keuangan{% endblock %}
+
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
+  <form method="get" style="display:flex;align-items:center;gap:8px;">
+    <input type="month" name="bulan" value="{{ bulan }}" onchange="this.form.submit()"
+      style="border:1.5px solid #c8e6c9;border-radius:8px;padding:6px 10px;font-size:13px;color:#1B5E20;background:#f0fdf4;outline:none;">
+  </form>
+  <button onclick="window.print()" class="btn-secondary">🖨️ Cetak</button>
+</div>
+
+<!-- Ringkasan -->
+<div class="card" style="margin-bottom:16px;border-left:4px solid #2E7D32;">
+  <h3 style="font-size:14px;font-weight:700;color:#1B5E20;margin-bottom:16px;">📊 Laporan Laba Rugi — {{ bulan }}</h3>
+  <table style="width:100%;border-collapse:collapse;font-size:13px;">
+    <tr style="border-bottom:1px solid #f0f4f0;">
+      <td style="padding:8px;color:#374151;font-weight:500;">Total Penjualan</td>
+      <td style="padding:8px;text-align:right;font-weight:700;color:#1d4ed8;">{{ stats.penjualan|rp }}</td>
+    </tr>
+    <tr>
+      <td style="padding:8px;color:#374151;padding-left:20px;font-size:12px;">Pembelian Bahan</td>
+      <td style="padding:8px;text-align:right;color:#dc2626;">- {{ pembelian|sum(attribute='total')|rp }}</td>
+    </tr>
+    <tr style="border-bottom:1px solid #f0f4f0;">
+      <td style="padding:8px;color:#374151;padding-left:20px;font-size:12px;">Biaya Operasional</td>
+      <td style="padding:8px;text-align:right;color:#dc2626;">- {{ operasional|sum(attribute='nominal')|rp }}</td>
+    </tr>
+    <tr style="border-bottom:2px solid #2E7D32;">
+      <td style="padding:8px;color:#374151;font-weight:500;">Total Pengeluaran</td>
+      <td style="padding:8px;text-align:right;font-weight:700;color:#dc2626;">{{ stats.pengeluaran|rp }}</td>
+    </tr>
+    <tr style="background:{% if stats.laba >= 0 %}#f0fdf4{% else %}#fef2f2{% endif %};">
+      <td style="padding:10px 8px;font-weight:800;font-size:14px;color:{% if stats.laba >= 0 %}#15803d{% else %}#b91c1c{% endif %};">
+        {% if stats.laba >= 0 %}✅ LABA BERSIH{% else %}❌ RUGI{% endif %}
+      </td>
+      <td style="padding:10px 8px;text-align:right;font-weight:800;font-size:16px;color:{% if stats.laba >= 0 %}#15803d{% else %}#b91c1c{% endif %};">
+        {{ stats.laba|rp }}
+      </td>
+    </tr>
+  </table>
+</div>
+
+<!-- Panen -->
+<div class="card" style="margin-bottom:16px;">
+  <h3 style="font-size:13px;font-weight:700;color:#1B5E20;margin-bottom:12px;">🍄 Panen Bulan Ini</h3>
+  {% if panen_bulan %}
+  <table style="width:100%;border-collapse:collapse;font-size:12px;">
+    <thead>
+      <tr style="border-bottom:1px solid #e7f3e8;">
+        <th style="text-align:left;padding:6px 8px;color:#64748b;">Tanggal</th>
+        <th style="text-align:left;padding:6px 8px;color:#64748b;">Batch</th>
+        <th style="text-align:left;padding:6px 8px;color:#64748b;">Berat (kg)</th>
+        <th style="text-align:left;padding:6px 8px;color:#64748b;">Kualitas</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in panen_bulan %}
+      <tr style="border-bottom:1px solid #f0f4f0;">
+        <td style="padding:6px 8px;">{{ p.tanggal }}</td>
+        <td style="padding:6px 8px;color:#2E7D32;font-weight:600;">{{ p.batch_kode }}</td>
+        <td style="padding:6px 8px;font-weight:700;">{{ p.berat_kg }} kg</td>
+        <td style="padding:6px 8px;"><span class="badge {% if p.kualitas=='A' %}badge-green{% elif p.kualitas=='B' %}badge-yellow{% else %}badge-gray{% endif %}">{{ p.kualitas }}</span></td>
+      </tr>
+      {% endfor %}
+      <tr style="background:#f0fdf4;font-weight:700;">
+        <td colspan="2" style="padding:6px 8px;">Total</td>
+        <td style="padding:6px 8px;color:#2E7D32;">{{ "%.1f"|format(panen_bulan|sum(attribute='berat_kg')) }} kg</td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+  {% else %}
+  <p style="font-size:12px;color:#94a3b8;">Tidak ada panen bulan ini</p>
+  {% endif %}
+</div>
+
+<!-- Penjualan Detail -->
+<div class="card" style="margin-bottom:16px;">
+  <h3 style="font-size:13px;font-weight:700;color:#1B5E20;margin-bottom:12px;">💰 Detail Penjualan</h3>
+  {% if penjualan %}
+  <table style="width:100%;border-collapse:collapse;font-size:12px;">
+    <thead>
+      <tr style="border-bottom:1px solid #e7f3e8;">
+        <th style="text-align:left;padding:6px 8px;color:#64748b;">Tanggal</th>
+        <th style="text-align:left;padding:6px 8px;color:#64748b;">Pembeli</th>
+        <th style="text-align:left;padding:6px 8px;color:#64748b;">kg</th>
+        <th style="text-align:left;padding:6px 8px;color:#64748b;">Total</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in penjualan %}
+      <tr style="border-bottom:1px solid #f0f4f0;">
+        <td style="padding:6px 8px;">{{ p.tanggal }}</td>
+        <td style="padding:6px 8px;">{{ p.nama_pembeli or 'Umum' }}</td>
+        <td style="padding:6px 8px;">{{ p.berat_kg }}</td>
+        <td style="padding:6px 8px;font-weight:700;color:#1d4ed8;">{{ p.total|rp }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p style="font-size:12px;color:#94a3b8;">Tidak ada penjualan bulan ini</p>
+  {% endif %}
+</div>
+{% endblock %}

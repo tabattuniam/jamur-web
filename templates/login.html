@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login — Sistem Jamur Tiram</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body style="background:linear-gradient(135deg,#1B5E20,#2E7D32,#388E3C);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px;">
+<div style="background:#fff;border-radius:20px;padding:36px 32px;width:100%;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,.2);">
+  <div style="text-align:center;margin-bottom:28px;">
+    <div style="font-size:48px;margin-bottom:8px;">🍄</div>
+    <h1 style="font-size:20px;font-weight:800;color:#1B5E20;">Sistem Jamur Tiram</h1>
+    <p style="font-size:12px;color:#64748b;margin-top:4px;">Produksi & Keuangan Budidaya</p>
+  </div>
+
+  {% if err %}
+  <div style="background:#fef2f2;border:1px solid #fecaca;color:#dc2626;padding:10px 14px;border-radius:10px;margin-bottom:16px;font-size:13px;">
+    ❌ {{ err }}
+  </div>
+  {% endif %}
+
+  <form method="post" action="/login">
+    <div style="margin-bottom:14px;">
+      <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:4px;">Username</label>
+      <input name="username" required autofocus placeholder="Masukkan username"
+        style="width:100%;border:1.5px solid #d1d5db;border-radius:10px;padding:10px 14px;font-size:13px;outline:none;box-sizing:border-box;">
+    </div>
+    <div style="margin-bottom:20px;">
+      <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:4px;">Password</label>
+      <input name="password" type="password" required placeholder="Masukkan password"
+        style="width:100%;border:1.5px solid #d1d5db;border-radius:10px;padding:10px 14px;font-size:13px;outline:none;box-sizing:border-box;">
+    </div>
+    <button type="submit"
+      style="width:100%;background:#2E7D32;color:#fff;font-weight:700;font-size:14px;padding:11px;border-radius:10px;border:none;cursor:pointer;">
+      Masuk
+    </button>
+  </form>
+
+  <p style="text-align:center;font-size:11px;color:#94a3b8;margin-top:20px;">
+    Default: admin / admin123
+  </p>
+</div>
+</body>
+</html>

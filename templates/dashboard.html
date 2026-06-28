@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% set active = "dashboard" %}
+{% block title %}Dashboard — Jamur Tiram{% endblock %}
+{% block topbar_title %}Dashboard{% endblock %}
+
+{% block content %}
+<!-- Filter Bulan -->
+<div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap;">
+  <span style="font-size:13px;color:#374151;font-weight:600;">Periode:</span>
+  <form method="get">
+    <input type="month" name="bulan" value="{{ bulan }}"
+      onchange="this.form.submit()"
+      style="border:1.5px solid #c8e6c9;border-radius:8px;padding:6px 10px;font-size:13px;color:#1B5E20;background:#f0fdf4;outline:none;cursor:pointer;">
+  </form>
+</div>
+
+<!-- Stat Cards -->
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;margin-bottom:24px;">
+
+  <div class="stat-card">
+    <div style="font-size:11px;color:#64748b;font-weight:600;margin-bottom:6px;">🌿 Baglog Aktif</div>
+    <div style="font-size:26px;font-weight:800;color:#1B5E20;">{{ stats.baglog_aktif }}</div>
+    <div style="font-size:11px;color:#94a3b8;margin-top:2px;">baglog</div>
+  </div>
+
+  <div class="stat-card">
+    <div style="font-size:11px;color:#64748b;font-weight:600;margin-bottom:6px;">🍄 Panen Bulan Ini</div>
+    <div style="font-size:26px;font-weight:800;color:#2E7D32;">{{ "%.1f"|format(stats.panen_kg) }}</div>
+    <div style="font-size:11px;color:#94a3b8;margin-top:2px;">kg</div>
+  </div>
+
+  <div class="stat-card">
+    <div style="font-size:11px;color:#64748b;font-weight:600;margin-bottom:6px;">💰 Penjualan</div>
+    <div style="font-size:20px;font-weight:800;color:#1d4ed8;">{{ stats.penjualan|rp }}</div>
+    <div style="font-size:11px;color:#94a3b8;margin-top:2px;">bulan ini</div>
+  </div>
+
+  <div class="stat-card">
+    <div style="font-size:11px;color:#64748b;font-weight:600;margin-bottom:6px;">📤 Pengeluaran</div>
+    <div style="font-size:20px;font-weight:800;color:#dc2626;">{{ stats.pengeluaran|rp }}</div>
+    <div style="font-size:11px;color:#94a3b8;margin-top:2px;">bulan ini</div>
+  </div>
+
+  <div class="stat-card" style="border:2px solid {% if stats.laba >= 0 %}#bbf7d0{% else %}#fecaca{% endif %};">
+    <div style="font-size:11px;color:#64748b;font-weight:600;margin-bottom:6px;">📊 Laba Bersih</div>
+    <div style="font-size:20px;font-weight:800;color:{% if stats.laba >= 0 %}#15803d{% else %}#dc2626{% endif %};">{{ stats.laba|rp }}</div>
+    <div style="font-size:11px;color:#94a3b8;margin-top:2px;">bulan ini</div>
+  </div>
+
+  <div class="stat-card">
+    <div style="font-size:11px;color:#64748b;font-weight:600;margin-bottom:6px;">⏳ Inkubasi</div>
+    <div style="font-size:26px;font-weight:800;color:#7e22ce;">{{ stats.batch_inkubasi }}</div>
+    <div style="font-size:11px;color:#94a3b8;margin-top:2px;">batch</div>
+  </div>
+
+  <div class="stat-card">
+    <div style="font-size:11px;color:#64748b;font-weight:600;margin-bottom:6px;">✅ Siap Panen</div>
+    <div style="font-size:26px;font-weight:800;color:#2E7D32;">{{ stats.batch_panen }}</div>
+    <div style="font-size:11px;color:#94a3b8;margin-top:2px;">batch</div>
+  </div>
+
+</div>
+
+<!-- Charts -->
+{% if chart_bulan != '[]' %}
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;">
+  <div class="card">
+    <div style="font-size:13px;font-weight:700;color:#1B5E20;margin-bottom:14px;">📈 Grafik Panen (kg)</div>
+    <canvas id="chartPanen" height="160"></canvas>
+  </div>
+  <div class="card">
+    <div style="font-size:13px;font-weight:700;color:#1B5E20;margin-bottom:14px;">💰 Grafik Penjualan (Rp)</div>
+    <canvas id="chartJual" height="160"></canvas>
+  </div>
+</div>
+{% endif %}
+
+<!-- Batch Terbaru -->
+<div class="card">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+    <div style="font-size:13px;font-weight:700;color:#1B5E20;">🧪 Batch Terbaru</div>
+    <a href="/batch" class="btn-secondary" style="font-size:11px;padding:5px 12px;">Lihat Semua</a>
+  </div>
+  {% if batches %}
+  <div style="overflow-x:auto;">
+    <table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <thead>
+        <tr style="border-bottom:1px solid #e7f3e8;">
+          <th style="text-align:left;padding:6px 8px;color:#64748b;font-weight:600;">Kode</th>
+          <th style="text-align:left;padding:6px 8px;color:#64748b;font-weight:600;">Nama</th>
+          <th style="text-align:left;padding:6px 8px;color:#64748b;font-weight:600;">Tgl Mulai</th>
+          <th style="text-align:left;padding:6px 8px;color:#64748b;font-weight:600;">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for b in batches %}
+        <tr style="border-bottom:1px solid #f0f4f0;">
+          <td style="padding:7px 8px;"><a href="/batch/{{ b.id }}" style="color:#2E7D32;font-weight:600;text-decoration:none;">{{ b.kode }}</a></td>
+          <td style="padding:7px 8px;color:#374151;">{{ b.nama or '-' }}</td>
+          <td style="padding:7px 8px;color:#64748b;">{{ b.tanggal_mulai }}</td>
+          <td style="padding:7px 8px;">
+            {% set sl = status_label.get(b.status, ('⚪','Unknown')) %}
+            <span class="badge badge-{% if b.status=='panen' %}green{% elif b.status=='inkubasi' %}purple{% elif b.status=='selesai' %}gray{% else %}yellow{% endif %}">
+              {{ sl[0] }} {{ sl[1] }}
+            </span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p style="font-size:12px;color:#94a3b8;text-align:center;padding:20px 0;">Belum ada batch produksi</p>
+  {% endif %}
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+const bulan = {{ chart_bulan }};
+const panen = {{ chart_panen }};
+const jual  = {{ chart_jual }};
+
+if (bulan.length > 0) {
+  new Chart(document.getElementById('chartPanen'), {
+    type: 'bar',
+    data: {
+      labels: bulan,
+      datasets: [{ label: 'kg', data: panen, backgroundColor: '#81C784', borderRadius: 6 }]
+    },
+    options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+  });
+
+  new Chart(document.getElementById('chartJual'), {
+    type: 'line',
+    data: {
+      labels: bulan,
+      datasets: [{ label: 'Rp', data: jual, borderColor: '#2E7D32', backgroundColor: 'rgba(46,125,50,.1)', fill: true, tension: .4 }]
+    },
+    options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+  });
+}
+</script>
+{% endblock %}

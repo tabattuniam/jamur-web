@@ -1,0 +1,549 @@
+{% extends "base.html" %}
+{% set active = "penjualan" %}
+{% block title %}Penjualan Jamur — Jamur Tiram{% endblock %}
+{% block topbar_title %}Penjualan Jamur Segar{% endblock %}
+
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
+  <form method="get" style="display:flex;align-items:center;gap:8px;">
+    <input type="month" name="bulan" value="{{ bulan }}" onchange="this.form.submit()"
+      style="border:1.5px solid #c8e6c9;border-radius:8px;padding:6px 10px;font-size:13px;color:#1B5E20;background:#f0fdf4;outline:none;">
+  </form>
+  <button onclick="document.getElementById('modal-tambah').style.display='flex'" class="btn-primary">
+    + Catat Penjualan
+  </button>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-bottom:20px;">
+  <div class="stat-card">
+    <div style="font-size:11px;color:#64748b;font-weight:600;">Total Pendapatan</div>
+    <div style="font-size:20px;font-weight:800;color:#1d4ed8;">{{ total|rp }}</div>
+    <div style="font-size:11px;color:#94a3b8;">bulan ini</div>
+  </div>
+  <div class="stat-card">
+    <div style="font-size:11px;color:#64748b;font-weight:600;">Total Berat</div>
+    <div style="font-size:26px;font-weight:800;color:#2E7D32;">{{ "%.2f"|format(total_kg) }}</div>
+    <div style="font-size:11px;color:#94a3b8;">kg</div>
+  </div>
+  <div class="stat-card">
+    <div style="font-size:11px;color:#64748b;font-weight:600;">Per Bungkus</div>
+    <div style="font-size:26px;font-weight:800;color:#7e22ce;">{{ total_bungkus }}</div>
+    <div style="font-size:11px;color:#94a3b8;">bungkus</div>
+  </div>
+  <div class="stat-card">
+    <div style="font-size:11px;color:#64748b;font-weight:600;">Transaksi</div>
+    <div style="font-size:26px;font-weight:800;color:#0369a1;">{{ penjualan_list|length }}</div>
+    <div style="font-size:11px;color:#94a3b8;">kali</div>
+  </div>
+</div>
+
+<div class="card">
+  <h3 style="font-size:13px;font-weight:700;color:#1B5E20;margin-bottom:14px;">💰 Riwayat Penjualan Jamur</h3>
+  {% if penjualan_list %}
+  <div style="overflow-x:auto;">
+    <table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <thead>
+        <tr style="border-bottom:1.5px solid #e7f3e8;background:#f9fdf9;">
+          <th style="text-align:left;padding:8px;color:#64748b;">Tanggal</th>
+          <th style="text-align:left;padding:8px;color:#64748b;">Pembeli</th>
+          <th style="text-align:left;padding:8px;color:#64748b;">Tipe</th>
+          <th style="text-align:left;padding:8px;color:#64748b;">Detail</th>
+          <th style="text-align:right;padding:8px;color:#64748b;">Berat</th>
+          <th style="text-align:right;padding:8px;color:#64748b;">Total</th>
+          <th style="text-align:left;padding:8px;color:#64748b;">Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in penjualan_list %}
+        <tr style="border-bottom:1px solid #f0f4f0;">
+          <td style="padding:8px;">{{ p.tanggal }}</td>
+          <td style="padding:8px;">
+            <div style="font-weight:500;color:#1e293b;">{{ p.nama_pembeli or 'Umum' }}</div>
+            {% if p.nomor_hp %}<div style="font-size:10px;color:#94a3b8;">{{ p.nomor_hp }}</div>{% endif %}
+            {% if p.batch_id %}
+            <a href="/batch/{{ p.batch_id }}" style="font-size:10px;color:#1B5E20;text-decoration:none;">{{ p.batch_kode }}</a>
+            {% endif %}
+          </td>
+          <td style="padding:8px;">
+            {% if p.tipe_jual == 'bungkus' %}
+            <span class="badge badge-purple">📦 Bungkus</span>
+            {% else %}
+            <span class="badge badge-blue">⚖️ Timbang</span>
+            {% endif %}
+          </td>
+          <td style="padding:8px;font-size:11px;color:#475569;">
+            {% if p.tipe_jual == 'bungkus' %}
+              {{ p.jumlah_bungkus }} bungkus<br>
+              <span style="color:#7e22ce;">@ {{ p.harga_per_kg|rp }}/bks</span><br>
+              <span style="color:#94a3b8;">Paket {{ p.jenis_paket }}</span>
+            {% else %}
+              <span style="color:#1d4ed8;">{{ p.harga_per_kg|rp }}/kg</span>
+            {% endif %}
+          </td>
+          <td style="padding:8px;text-align:right;font-weight:700;color:#2E7D32;">
+            {{ "%.2f"|format(p.berat_kg) }} kg
+          </td>
+          <td style="padding:8px;text-align:right;font-weight:700;color:#1d4ed8;">{{ p.total|rp }}</td>
+          <td style="padding:8px;">
+            <span class="badge {% if p.status_bayar=='lunas' %}badge-green{% else %}badge-yellow{% endif %}">
+              {% if p.status_bayar=='lunas' %}✓ Lunas{% else %}⏳ Tempo{% endif %}
+            </span>
+          </td>
+          <td style="padding:8px;">
+            <div style="display:flex;gap:4px;">
+              <button class="btn-secondary" style="padding:4px 8px;font-size:11px;"
+                onclick="bukaEdit({
+                  id:{{ p.id }},
+                  tanggal:'{{ p.tanggal }}',
+                  nama_pembeli:'{{ p.nama_pembeli or '' }}',
+                  nomor_hp:'{{ p.nomor_hp or '' }}',
+                  tipe_jual:'{{ p.tipe_jual or 'timbang' }}',
+                  jenis_paket:'{{ p.jenis_paket or '' }}',
+                  jumlah_bungkus:{{ p.jumlah_bungkus or 0 }},
+                  berat_kg:{{ p.berat_kg }},
+                  harga_per_kg:{{ p.harga_per_kg }},
+                  total:{{ p.total }},
+                  status_bayar:'{{ p.status_bayar }}',
+                  catatan:'{{ p.catatan or '' }}',
+                  batch_id:'{{ p.batch_id or '' }}'
+                })">✏️</button>
+              <form method="post" action="/penjualan/{{ p.id }}/hapus" onsubmit="return confirm('Hapus transaksi ini?')">
+                <button class="btn-danger" style="padding:4px 8px;font-size:11px;">🗑</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+        <tr style="background:#f0fdf4;font-weight:700;border-top:2px solid #c8e6c9;">
+          <td colspan="4" style="padding:8px;color:#1B5E20;">Total</td>
+          <td style="padding:8px;text-align:right;color:#2E7D32;">{{ "%.2f"|format(total_kg) }} kg</td>
+          <td style="padding:8px;text-align:right;color:#1d4ed8;">{{ total|rp }}</td>
+          <td colspan="2"></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div style="text-align:center;padding:32px;color:#94a3b8;">
+    <div style="font-size:32px;margin-bottom:8px;">💰</div>
+    <p>Belum ada data penjualan bulan {{ bulan }}</p>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Modal Tambah -->
+<div id="modal-tambah" class="modal-overlay" style="display:none;">
+  <div style="background:#fff;border-radius:18px;width:100%;max-width:480px;padding:24px;max-height:90vh;overflow-y:auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+      <h3 style="font-size:15px;font-weight:700;color:#1B5E20;">🍄 Catat Penjualan Jamur</h3>
+      <button onclick="document.getElementById('modal-tambah').style.display='none'" style="background:none;border:none;font-size:20px;cursor:pointer;color:#94a3b8;">✕</button>
+    </div>
+    <form method="post" action="/penjualan/tambah">
+      <div style="display:grid;gap:10px;">
+
+        <!-- Tipe penjualan -->
+        <div>
+          <label class="form-label">Tipe Penjualan *</label>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <label id="lbl-timbang" onclick="ubahTipe('timbang')" style="display:flex;align-items:center;gap:8px;border:2px solid #1d4ed8;border-radius:10px;padding:10px 12px;cursor:pointer;background:#eff6ff;">
+              <input type="radio" name="tipe_jual" value="timbang" checked style="accent-color:#1d4ed8;">
+              <div>
+                <div style="font-size:12px;font-weight:700;color:#1d4ed8;">⚖️ Per Timbang</div>
+                <div style="font-size:10px;color:#64748b;">Ons / kilogram</div>
+              </div>
+            </label>
+            <label id="lbl-bungkus" onclick="ubahTipe('bungkus')" style="display:flex;align-items:center;gap:8px;border:2px solid #e2e8f0;border-radius:10px;padding:10px 12px;cursor:pointer;background:#fff;">
+              <input type="radio" name="tipe_jual" value="bungkus" style="accent-color:#7e22ce;">
+              <div>
+                <div style="font-size:12px;font-weight:700;color:#7e22ce;">📦 Per Bungkus</div>
+                <div style="font-size:10px;color:#64748b;">Paket kemasan</div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- BAGIAN TIMBANG -->
+        <div id="sec-timbang">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div>
+              <label class="form-label">Berat (kg) *</label>
+              <input id="inp-berat" name="berat_kg" type="number" step="0.01" class="form-input" required min="0.01" oninput="hitungTotal()">
+            </div>
+            <div>
+              <label class="form-label">Harga/kg (Rp) *</label>
+              <input id="inp-harga-kg" name="harga_per_kg" type="number" class="form-input" required min="1" oninput="hitungTotal()">
+            </div>
+          </div>
+        </div>
+
+        <!-- BAGIAN BUNGKUS -->
+        <div id="sec-bungkus" style="display:none;">
+          <div style="display:grid;gap:8px;">
+            <div>
+              <label class="form-label">Jenis Paket *</label>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                <label id="lbl-p4500" onclick="ubahPaket('4500')" style="display:flex;align-items:center;gap:8px;border:2px solid #e2e8f0;border-radius:10px;padding:10px 12px;cursor:pointer;">
+                  <input type="radio" name="jenis_paket" value="4500" style="accent-color:#7e22ce;">
+                  <div>
+                    <div style="font-size:12px;font-weight:700;color:#7e22ce;">Rp 4.500</div>
+                    <div style="font-size:10px;color:#64748b;">1,6 ons / bungkus</div>
+                  </div>
+                </label>
+                <label id="lbl-p5000" onclick="ubahPaket('5000')" style="display:flex;align-items:center;gap:8px;border:2px solid #e2e8f0;border-radius:10px;padding:10px 12px;cursor:pointer;">
+                  <input type="radio" name="jenis_paket" value="5000" style="accent-color:#7e22ce;">
+                  <div>
+                    <div style="font-size:12px;font-weight:700;color:#7e22ce;">Rp 5.000</div>
+                    <div style="font-size:10px;color:#64748b;">1,7 ons / bungkus</div>
+                  </div>
+                </label>
+              </div>
+            </div>
+            <div>
+              <label class="form-label">Jumlah Bungkus *</label>
+              <input id="inp-bungkus" name="jumlah_bungkus" type="number" min="1" class="form-input" value="0" oninput="hitungBungkus()">
+            </div>
+            <div style="background:#f5f3ff;border-radius:8px;padding:8px 10px;font-size:12px;color:#7e22ce;">
+              Berat total: <strong id="preview-berat">0 kg</strong>
+            </div>
+            <!-- Mode bungkus menulis ke inp-berat & inp-harga-kg (shared single input) -->
+          </div>
+        </div>
+
+        <!-- Total preview -->
+        <div style="background:#f0fdf4;border-radius:8px;padding:10px;font-size:14px;font-weight:700;color:#1B5E20;">
+          Total: <span id="total-preview">Rp 0</span>
+        </div>
+
+        <div>
+          <label class="form-label">Tanggal *</label>
+          <input name="tanggal" type="date" required class="form-input" value="{{ now.strftime('%Y-%m-%d') }}">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div>
+            <label class="form-label">Nama Pembeli</label>
+            <input name="nama_pembeli" class="form-input" placeholder="Opsional">
+          </div>
+          <div>
+            <label class="form-label">No. HP</label>
+            <input name="nomor_hp" class="form-input" placeholder="Opsional">
+          </div>
+        </div>
+        <div>
+          <label class="form-label">Batch (opsional)</label>
+          <select name="batch_id" class="form-input">
+            <option value="">— Tidak terhubung ke batch —</option>
+            {% for b in batches %}
+            <option value="{{ b.id }}">{{ b.kode }}{% if b.nama %} — {{ b.nama }}{% endif %} ({{ b.status }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="form-label">Status Bayar</label>
+          <select name="status_bayar" class="form-input">
+            <option value="lunas">✓ Lunas</option>
+            <option value="hutang">⏳ Tempo / Hutang</option>
+          </select>
+        </div>
+        <div>
+          <label class="form-label">Catatan</label>
+          <input name="catatan" class="form-input" placeholder="Opsional">
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:18px;">
+        <button type="button" onclick="document.getElementById('modal-tambah').style.display='none'" class="btn-secondary" style="flex:1;justify-content:center;">Batal</button>
+        <button type="submit" class="btn-primary" style="flex:1;justify-content:center;">Simpan</button>
+      </div>
+    </form>
+  </div>
+</div>
+<!-- Modal Edit -->
+<div id="modal-edit" class="modal-overlay" style="display:none;">
+  <div style="background:#fff;border-radius:18px;width:100%;max-width:480px;padding:24px;max-height:90vh;overflow-y:auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+      <h3 style="font-size:15px;font-weight:700;color:#1B5E20;">✏️ Edit Penjualan</h3>
+      <button onclick="document.getElementById('modal-edit').style.display='none'" style="background:none;border:none;font-size:20px;cursor:pointer;color:#94a3b8;">✕</button>
+    </div>
+    <form method="post" id="form-edit" action="" onsubmit="try { return validasiEdit() } catch(e) { console.error('[FORM EDIT ERROR]', e); alert('JS error: '+e.message+'\\n\\nForm tetap akan disubmit.'); return true; }">
+      <div style="display:grid;gap:10px;">
+        <div>
+          <label class="form-label">Tipe Penjualan *</label>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <label id="elbl-timbang" onclick="ubahTipeEdit('timbang')" style="display:flex;align-items:center;gap:8px;border:2px solid #1d4ed8;border-radius:10px;padding:10px 12px;cursor:pointer;background:#eff6ff;">
+              <input type="radio" id="erad-timbang" name="tipe_jual" value="timbang" checked style="accent-color:#1d4ed8;">
+              <div><div style="font-size:12px;font-weight:700;color:#1d4ed8;">⚖️ Per Timbang</div><div style="font-size:10px;color:#64748b;">Ons / kilogram</div></div>
+            </label>
+            <label id="elbl-bungkus" onclick="ubahTipeEdit('bungkus')" style="display:flex;align-items:center;gap:8px;border:2px solid #e2e8f0;border-radius:10px;padding:10px 12px;cursor:pointer;background:#fff;">
+              <input type="radio" id="erad-bungkus" name="tipe_jual" value="bungkus" style="accent-color:#7e22ce;">
+              <div><div style="font-size:12px;font-weight:700;color:#7e22ce;">📦 Per Bungkus</div><div style="font-size:10px;color:#64748b;">Paket kemasan</div></div>
+            </label>
+          </div>
+        </div>
+        <div id="esec-timbang">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div>
+              <label class="form-label">Berat (kg) *</label>
+              <input id="einp-berat" name="berat_kg" type="number" step="0.01" class="form-input" value="0" oninput="hitungTotalEdit()">
+            </div>
+            <div>
+              <label class="form-label">Harga/kg (Rp) *</label>
+              <input id="einp-harga-kg" name="harga_per_kg" type="number" class="form-input" value="0" oninput="hitungTotalEdit()">
+            </div>
+          </div>
+        </div>
+        <div id="esec-bungkus" style="display:none;">
+          <div style="display:grid;gap:8px;">
+            <div>
+              <label class="form-label">Jenis Paket *</label>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                <label id="elbl-p4500" onclick="ubahPaketEdit('4500')" style="display:flex;align-items:center;gap:8px;border:2px solid #e2e8f0;border-radius:10px;padding:10px 12px;cursor:pointer;">
+                  <input type="radio" id="erad-p4500" name="jenis_paket" value="4500" style="accent-color:#7e22ce;">
+                  <div><div style="font-size:12px;font-weight:700;color:#7e22ce;">Rp 4.500</div><div style="font-size:10px;color:#64748b;">1,6 ons / bungkus</div></div>
+                </label>
+                <label id="elbl-p5000" onclick="ubahPaketEdit('5000')" style="display:flex;align-items:center;gap:8px;border:2px solid #e2e8f0;border-radius:10px;padding:10px 12px;cursor:pointer;">
+                  <input type="radio" id="erad-p5000" name="jenis_paket" value="5000" style="accent-color:#7e22ce;">
+                  <div><div style="font-size:12px;font-weight:700;color:#7e22ce;">Rp 5.000</div><div style="font-size:10px;color:#64748b;">1,7 ons / bungkus</div></div>
+                </label>
+              </div>
+            </div>
+            <div>
+              <label class="form-label">Jumlah Bungkus *</label>
+              <input id="einp-bungkus" name="jumlah_bungkus" type="number" min="1" class="form-input" value="0" oninput="hitungBungkusEdit()">
+            </div>
+            <div style="background:#f5f3ff;border-radius:8px;padding:8px 10px;font-size:12px;color:#7e22ce;">
+              Berat total: <strong id="epreview-berat">0 kg</strong>
+            </div>
+            <!-- Mode bungkus menulis ke einp-berat & einp-harga-kg (shared single input) -->
+          </div>
+        </div>
+        <div style="background:#f0fdf4;border-radius:8px;padding:10px;font-size:14px;font-weight:700;color:#1B5E20;">
+          Total: <span id="etotal-preview">Rp 0</span>
+        </div>
+        <div>
+          <label class="form-label">Tanggal *</label>
+          <input id="einp-tanggal" name="tanggal" type="date" required class="form-input">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div>
+            <label class="form-label">Nama Pembeli</label>
+            <input id="einp-nama" name="nama_pembeli" class="form-input" placeholder="Opsional">
+          </div>
+          <div>
+            <label class="form-label">No. HP</label>
+            <input id="einp-hp" name="nomor_hp" class="form-input" placeholder="Opsional">
+          </div>
+        </div>
+        <div>
+          <label class="form-label">Batch (opsional)</label>
+          <select id="einp-batch" name="batch_id" class="form-input">
+            <option value="">— Tidak terhubung ke batch —</option>
+            {% for b in batches %}
+            <option value="{{ b.id }}">{{ b.kode }}{% if b.nama %} — {{ b.nama }}{% endif %} ({{ b.status }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="form-label">Status Bayar</label>
+          <select id="einp-status" name="status_bayar" class="form-input">
+            <option value="lunas">✓ Lunas</option>
+            <option value="hutang">⏳ Tempo / Hutang</option>
+          </select>
+        </div>
+        <div>
+          <label class="form-label">Catatan</label>
+          <input id="einp-catatan" name="catatan" class="form-input" placeholder="Opsional">
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:18px;">
+        <button type="button" onclick="document.getElementById('modal-edit').style.display='none'" class="btn-secondary" style="flex:1;justify-content:center;">Batal</button>
+        <button type="submit" class="btn-primary" style="flex:1;justify-content:center;">Simpan</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const PAKET = {
+  '4500': { harga: 4500, berat_ons: 1.6 },
+  '5000': { harga: 5000, berat_ons: 1.7 },
+};
+let tipeAktif = 'timbang';
+let paketAktif = null;
+
+function ubahTipe(tipe) {
+  tipeAktif = tipe;
+  document.querySelector('input[name="tipe_jual"][value="'+tipe+'"]').checked = true;
+  document.getElementById('sec-timbang').style.display  = tipe === 'timbang' ? 'block' : 'none';
+  document.getElementById('sec-bungkus').style.display  = tipe === 'bungkus' ? 'block' : 'none';
+  document.getElementById('lbl-timbang').style.borderColor = tipe === 'timbang' ? '#1d4ed8' : '#e2e8f0';
+  document.getElementById('lbl-timbang').style.background  = tipe === 'timbang' ? '#eff6ff' : '#fff';
+  document.getElementById('lbl-bungkus').style.borderColor = tipe === 'bungkus' ? '#7e22ce' : '#e2e8f0';
+  document.getElementById('lbl-bungkus').style.background  = tipe === 'bungkus' ? '#faf5ff' : '#fff';
+  if (tipe === 'timbang') {
+    // Reset shared input ke value user-controlled
+    hitungTotal();
+  } else {
+    hitungBungkus();
+  }
+}
+
+function ubahPaket(kode) {
+  paketAktif = kode;
+  ['4500','5000'].forEach(k => {
+    document.getElementById('lbl-p'+k).style.borderColor = k === kode ? '#7e22ce' : '#e2e8f0';
+    document.getElementById('lbl-p'+k).style.background  = k === kode ? '#faf5ff' : '#fff';
+  });
+  hitungBungkus();
+}
+
+function hitungBungkus() {
+  if (!paketAktif) { document.getElementById('total-preview').textContent = 'Rp 0'; return; }
+  const p   = PAKET[paketAktif];
+  const jml = parseInt(document.getElementById('inp-bungkus').value) || 0;
+  const berat = jml * p.berat_ons / 10; // 1 ons = 0.1 kg
+  const total = jml * p.harga;
+  // Tulis ke input shared (berat_kg & harga_per_kg) supaya backend tetap dapat nilai benar
+  document.getElementById('inp-berat').value = berat.toFixed(3);
+  document.getElementById('inp-harga-kg').value = p.harga;
+  document.getElementById('preview-berat').textContent = berat.toFixed(2) + ' kg (' + (jml * p.berat_ons).toFixed(1) + ' ons)';
+  document.getElementById('total-preview').textContent  = 'Rp ' + total.toLocaleString('id');
+}
+
+function hitungTotal() {
+  const kg    = parseFloat(document.getElementById('inp-berat').value)    || 0;
+  const harga = parseFloat(document.getElementById('inp-harga-kg').value) || 0;
+  document.getElementById('total-preview').textContent = 'Rp ' + (kg * harga).toLocaleString('id');
+}
+
+function validasiTambah() {
+  // DEBUG indicator — kalau Pak Tebe lihat ini, JS jalan
+  console.log('[validasiTambah] called');
+  const checked = document.querySelector('#modal-tambah input[name="tipe_jual"]:checked');
+  if (!checked) {
+    alert('🐛 DEBUG: Tidak ada radio tipe_jual yang ter-check. Pilih Per Timbang atau Per Bungkus.');
+    return false;
+  }
+  const tipe = checked.value;
+  console.log('[validasiTambah] tipe =', tipe);
+  if (tipe === 'timbang') {
+    const beratEl = document.getElementById('inp-berat');
+    const hargaEl = document.getElementById('inp-harga-kg');
+    const berat = parseFloat(beratEl.value);
+    const harga = parseFloat(hargaEl.value);
+    console.log('[validasiTambah] timbang: berat=', berat, 'harga=', harga);
+    if (!berat || berat <= 0) { 
+      alert('⚠️ Berat (kg) harus diisi dan lebih dari 0'); 
+      beratEl.focus(); 
+      return false; 
+    }
+    if (!harga || harga <= 0) { 
+      alert('⚠️ Harga/kg harus diisi dan lebih dari 0'); 
+      hargaEl.focus(); 
+      return false; 
+    }
+  } else {
+    if (!paketAktif) { 
+      alert('⚠️ Pilih jenis paket (Rp 4.500 atau Rp 5.000)'); 
+      return false; 
+    }
+    const jml = parseInt(document.getElementById('inp-bungkus').value) || 0;
+    if (jml <= 0) { 
+      alert('⚠️ Jumlah bungkus harus minimal 1'); 
+      document.getElementById('inp-bungkus').focus(); 
+      return false; 
+    }
+  }
+  console.log('[validasiTambah] PASSED, submitting form');
+  return true;
+}
+
+ubahTipe('timbang');
+
+// ── Edit modal ────────────────────────────────────────────────────────────────
+let eTipeAktif = 'timbang';
+let ePaketAktif = null;
+
+function bukaEdit(d) {
+  document.getElementById('form-edit').action = '/penjualan/' + d.id + '/edit';
+  document.getElementById('einp-tanggal').value  = d.tanggal;
+  document.getElementById('einp-nama').value     = d.nama_pembeli;
+  document.getElementById('einp-hp').value       = d.nomor_hp;
+  document.getElementById('einp-status').value   = d.status_bayar;
+  document.getElementById('einp-catatan').value  = d.catatan;
+  document.getElementById('einp-batch').value    = d.batch_id;
+
+  ePaketAktif = d.jenis_paket || null;
+  ubahTipeEdit(d.tipe_jual || 'timbang');
+
+  if (d.tipe_jual === 'bungkus') {
+    document.getElementById('einp-bungkus').value = d.jumlah_bungkus;
+    if (d.jenis_paket) {
+      document.getElementById('erad-p' + d.jenis_paket).checked = true;
+      ubahPaketEdit(d.jenis_paket);
+    }
+  } else {
+    document.getElementById('einp-berat').value    = d.berat_kg;
+    document.getElementById('einp-harga-kg').value = d.harga_per_kg;
+    hitungTotalEdit();
+  }
+  document.getElementById('modal-edit').style.display = 'flex';
+}
+
+function ubahTipeEdit(tipe) {
+  eTipeAktif = tipe;
+  document.getElementById('esec-timbang').style.display  = tipe === 'timbang' ? 'block' : 'none';
+  document.getElementById('esec-bungkus').style.display  = tipe === 'bungkus' ? 'block' : 'none';
+  document.getElementById('erad-timbang').checked        = tipe === 'timbang';
+  document.getElementById('erad-bungkus').checked        = tipe === 'bungkus';
+  document.getElementById('elbl-timbang').style.borderColor = tipe === 'timbang' ? '#1d4ed8' : '#e2e8f0';
+  document.getElementById('elbl-timbang').style.background  = tipe === 'timbang' ? '#eff6ff' : '#fff';
+  document.getElementById('elbl-bungkus').style.borderColor = tipe === 'bungkus' ? '#7e22ce' : '#e2e8f0';
+  document.getElementById('elbl-bungkus').style.background  = tipe === 'bungkus' ? '#faf5ff' : '#fff';
+}
+
+function ubahPaketEdit(kode) {
+  ePaketAktif = kode;
+  ['4500','5000'].forEach(k => {
+    document.getElementById('elbl-p'+k).style.borderColor = k === kode ? '#7e22ce' : '#e2e8f0';
+    document.getElementById('elbl-p'+k).style.background  = k === kode ? '#faf5ff' : '#fff';
+    document.getElementById('erad-p'+k).checked           = k === kode;
+  });
+  hitungBungkusEdit();
+}
+
+function hitungBungkusEdit() {
+  if (!ePaketAktif) return;
+  const p   = PAKET[ePaketAktif];
+  const jml = parseInt(document.getElementById('einp-bungkus').value) || 0;
+  const berat = jml * p.berat_ons / 10;
+  const total = jml * p.harga;
+  document.getElementById('einp-berat').value = berat.toFixed(3);
+  document.getElementById('einp-harga-kg').value = p.harga;
+  document.getElementById('epreview-berat').textContent = berat.toFixed(2) + ' kg (' + (jml * p.berat_ons).toFixed(1) + ' ons)';
+  document.getElementById('etotal-preview').textContent  = 'Rp ' + total.toLocaleString('id');
+}
+
+function hitungTotalEdit() {
+  const kg    = parseFloat(document.getElementById('einp-berat').value)    || 0;
+  const harga = parseFloat(document.getElementById('einp-harga-kg').value) || 0;
+  document.getElementById('etotal-preview').textContent = 'Rp ' + (kg * harga).toLocaleString('id');
+}
+
+function validasiEdit() {
+  const tipe = document.querySelector('#modal-edit input[name="tipe_jual"]:checked').value;
+  if (tipe === 'timbang') {
+    const berat = parseFloat(document.getElementById('einp-berat').value) || 0;
+    const harga = parseFloat(document.getElementById('einp-harga-kg').value) || 0;
+    if (berat <= 0) { alert('⚠️ Berat (kg) tidak boleh kosong atau 0'); document.getElementById('einp-berat').focus(); return false; }
+    if (harga <= 0) { alert('⚠️ Harga/kg tidak boleh kosong atau 0'); document.getElementById('einp-harga-kg').focus(); return false; }
+  } else {
+    if (!ePaketAktif)                                                  { alert('⚠️ Pilih jenis paket (Rp 4.500 atau Rp 5.000)'); return false; }
+    const jml = parseInt(document.getElementById('einp-bungkus').value) || 0;
+    if (jml <= 0) { alert('⚠️ Jumlah bungkus harus minimal 1'); document.getElementById('einp-bungkus').focus(); return false; }
+  }
+  return true;
+}
+</script>
+{% endblock %}

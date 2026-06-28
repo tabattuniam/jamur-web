@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% set active = "piutang" %}
+{% block title %}Piutang — Jamur Tiram{% endblock %}
+{% block topbar_title %}Piutang Penjual{% endblock %}
+
+{% block content %}
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:20px;">
+  <div class="stat-card" style="border-left:4px solid #dc2626;">
+    <div style="font-size:11px;color:#64748b;font-weight:600;">Total Piutang</div>
+    <div style="font-size:20px;font-weight:800;color:#dc2626;">{{ total_piutang|rp }}</div>
+    <div style="font-size:11px;color:#94a3b8;">belum dibayar</div>
+  </div>
+  <div class="stat-card" style="border-left:4px solid #f59e0b;">
+    <div style="font-size:11px;color:#64748b;font-weight:600;">Jumlah Penjual</div>
+    <div style="font-size:26px;font-weight:800;color:#f59e0b;">{{ piutang_list|length }}</div>
+    <div style="font-size:11px;color:#94a3b8;">masih berhutang</div>
+  </div>
+</div>
+
+{% if piutang_list %}
+<div style="display:grid;gap:12px;">
+  {% for p in piutang_list %}
+  <div class="card" style="border-left:4px solid #fca5a5;">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+      <div>
+        <div style="font-size:15px;font-weight:700;color:#1e293b;">{{ p.nama_pembeli }}</div>
+        <div style="font-size:12px;color:#64748b;margin-top:2px;">
+          {{ p.jumlah_transaksi }} transaksi belum lunas
+        </div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:20px;font-weight:800;color:#dc2626;">{{ p.total_hutang|rp }}</div>
+        <div style="font-size:11px;color:#94a3b8;">sisa hutang</div>
+      </div>
+    </div>
+
+    <!-- Daftar transaksi hutang -->
+    <div style="margin-top:14px;overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <thead>
+          <tr style="border-bottom:1px solid #fee2e2;background:#fff5f5;">
+            <th style="text-align:left;padding:6px 8px;color:#64748b;">Tanggal</th>
+            <th style="text-align:left;padding:6px 8px;color:#64748b;">Detail</th>
+            <th style="text-align:right;padding:6px 8px;color:#64748b;">Berat</th>
+            <th style="text-align:right;padding:6px 8px;color:#64748b;">Tagihan</th>
+            <th style="text-align:left;padding:6px 8px;color:#64748b;">Catatan</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in p.hutang_transaksi %}
+          <tr style="border-bottom:1px solid #f0f4f0;">
+            <td style="padding:6px 8px;white-space:nowrap;">{{ t.tanggal }}</td>
+            <td style="padding:6px 8px;font-size:11px;">
+              {% if t.tipe_jual == 'bungkus' %}
+              <span class="badge badge-purple" style="margin-bottom:3px;">📦 Bungkus</span><br>
+              {{ t.jumlah_bungkus }} bungkus × {{ t.harga_per_kg|rp }}<br>
+              <span style="color:#94a3b8;">Paket {{ t.jenis_paket }}</span>
+              {% else %}
+              <span class="badge badge-blue">⚖️ Timbang</span><br>
+              <span style="color:#1d4ed8;">{{ t.harga_per_kg|rp }}/kg</span>
+              {% endif %}
+            </td>
+            <td style="padding:6px 8px;text-align:right;color:#2E7D32;font-weight:600;white-space:nowrap;">
+              {{ "%.2f"|format(t.berat_kg) }} kg
+            </td>
+            <td style="padding:6px 8px;text-align:right;font-weight:700;color:#dc2626;white-space:nowrap;">{{ t.total|rp }}</td>
+            <td style="padding:6px 8px;color:#94a3b8;font-size:11px;">{{ t.catatan or '-' }}</td>
+          </tr>
+          {% endfor %}
+          <tr style="background:#fef2f2;font-weight:700;border-top:2px solid #fca5a5;">
+            <td colspan="2" style="padding:6px 8px;color:#dc2626;">Total Hutang</td>
+            <td></td>
+            <td style="padding:6px 8px;text-align:right;color:#dc2626;">{{ p.total_hutang|rp }}</td>
+            <td></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Riwayat pembayaran -->
+    {% if p.pembayaran %}
+    <div style="margin-top:12px;">
+      <div style="font-size:11px;font-weight:700;color:#64748b;margin-bottom:6px;">Riwayat Pembayaran</div>
+      <div style="display:grid;gap:4px;">
+        {% for bayar in p.pembayaran %}
+        <div style="display:flex;align-items:center;justify-content:space-between;background:#f0fdf4;border-radius:8px;padding:7px 10px;font-size:12px;">
+          <div>
+            <span style="color:#15803d;font-weight:600;">{{ bayar.tanggal }}</span>
+            {% if bayar.catatan %}<span style="color:#64748b;margin-left:8px;">— {{ bayar.catatan }}</span>{% endif %}
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-weight:700;color:#15803d;">+{{ bayar.jumlah|rp }}</span>
+            <form method="post" action="/piutang/bayar/{{ bayar.id }}/hapus" onsubmit="return confirm('Hapus catatan pembayaran ini?')">
+              <button class="btn-danger" style="padding:3px 7px;font-size:11px;">🗑</button>
+            </form>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Form catat pembayaran -->
+    <div style="margin-top:14px;border-top:1px solid #f0f4f0;padding-top:14px;">
+      <div style="font-size:12px;font-weight:700;color:#1B5E20;margin-bottom:8px;">Catat Pembayaran</div>
+      <form method="post" action="/piutang/bayar">
+        <input type="hidden" name="nama_penjual" value="{{ p.nama_pembeli }}">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;align-items:end;flex-wrap:wrap;">
+          <div>
+            <label class="form-label">Tanggal</label>
+            <input name="tanggal" type="date" required class="form-input" value="{{ now.strftime('%Y-%m-%d') }}">
+          </div>
+          <div>
+            <label class="form-label">Jumlah (Rp)</label>
+            <input name="jumlah" type="number" required class="form-input" placeholder="0"
+              value="{{ p.total_hutang|int }}">
+          </div>
+          <div>
+            <label class="form-label">Catatan</label>
+            <input name="catatan" class="form-input" placeholder="Opsional">
+          </div>
+          <div>
+            <button type="submit" class="btn-primary" style="white-space:nowrap;">✓ Catat</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{% else %}
+<div class="card" style="text-align:center;padding:48px;">
+  <div style="font-size:40px;margin-bottom:12px;">✅</div>
+  <div style="font-size:15px;font-weight:700;color:#15803d;margin-bottom:6px;">Tidak ada piutang</div>
+  <div style="font-size:13px;color:#94a3b8;">Semua penjual sudah melunasi pembayaran</div>
+</div>
+{% endif %}
+
+{% endblock %}

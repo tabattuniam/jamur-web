@@ -1,0 +1,277 @@
+{% extends "base.html" %}
+{% set active = "keuangan" %}
+{% block title %}Pengeluaran — Jamur Tiram{% endblock %}
+{% block topbar_title %}Pengeluaran{% endblock %}
+
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
+  <form method="get" style="display:flex;align-items:center;gap:8px;">
+    <input type="month" name="bulan" value="{{ bulan }}" onchange="this.form.submit()"
+      style="border:1.5px solid #c8e6c9;border-radius:8px;padding:6px 10px;font-size:13px;color:#1B5E20;background:#f0fdf4;outline:none;">
+  </form>
+  <div style="display:flex;gap:8px;">
+    <button onclick="document.getElementById('modal-beli').classList.remove('hidden')" class="btn-secondary">+ Pembelian Bahan</button>
+    <button onclick="document.getElementById('modal-ops').classList.remove('hidden')" class="btn-primary">+ Biaya Operasional</button>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:20px;">
+  <div class="stat-card">
+    <div style="font-size:11px;color:#64748b;font-weight:600;">Pembelian Bahan</div>
+    <div style="font-size:20px;font-weight:800;color:#dc2626;">{{ total_beli|rp }}</div>
+  </div>
+  <div class="stat-card">
+    <div style="font-size:11px;color:#64748b;font-weight:600;">Biaya Operasional</div>
+    <div style="font-size:20px;font-weight:800;color:#dc2626;">{{ total_ops|rp }}</div>
+  </div>
+  <div class="stat-card" style="border:2px solid #fecaca;">
+    <div style="font-size:11px;color:#64748b;font-weight:600;">Total Pengeluaran</div>
+    <div style="font-size:20px;font-weight:800;color:#b91c1c;">{{ total_keluar|rp }}</div>
+  </div>
+</div>
+
+<!-- Tabs -->
+<div style="display:flex;gap:4px;margin-bottom:12px;">
+  <button onclick="showTab('beli')" id="tab-beli"
+    style="padding:7px 16px;border-radius:8px;border:none;font-size:12px;font-weight:600;background:#2E7D32;color:#fff;cursor:pointer;">
+    📦 Pembelian Bahan ({{ pembelian|length }})
+  </button>
+  <button onclick="showTab('ops')" id="tab-ops"
+    style="padding:7px 16px;border-radius:8px;border:1.5px solid #e2e8f0;font-size:12px;font-weight:600;background:#fff;color:#64748b;cursor:pointer;">
+    🔧 Operasional ({{ operasional|length }})
+  </button>
+</div>
+
+<!-- Tab Pembelian -->
+<div id="tab-content-beli" class="card">
+  {% if pembelian %}
+  <div style="overflow-x:auto;">
+    <table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <thead>
+        <tr style="border-bottom:1.5px solid #e7f3e8;">
+          <th style="text-align:left;padding:8px;color:#64748b;">Tanggal</th>
+          <th style="text-align:left;padding:8px;color:#64748b;">Bahan</th>
+          <th style="text-align:left;padding:8px;color:#64748b;">Jumlah</th>
+          <th style="text-align:left;padding:8px;color:#64748b;">Harga Satuan</th>
+          <th style="text-align:left;padding:8px;color:#64748b;">Total</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in pembelian %}
+        <tr style="border-bottom:1px solid #f0f4f0;">
+          <td style="padding:8px;">{{ p.tanggal }}</td>
+          <td style="padding:8px;font-weight:600;">{{ p.nama_bahan }}</td>
+          <td style="padding:8px;">{{ p.jumlah }} {{ p.satuan }}</td>
+          <td style="padding:8px;">{{ p.harga_satuan|rp }}</td>
+          <td style="padding:8px;font-weight:700;color:#dc2626;">{{ p.total|rp }}</td>
+          <td style="padding:8px;">
+            <form method="post" action="/keuangan/pembelian/{{ p.id }}/hapus" onsubmit="return confirm('Hapus?')">
+              <button class="btn-danger" style="padding:4px 8px;">🗑</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+        <tr style="background:#fef2f2;font-weight:700;">
+          <td colspan="4" style="padding:8px;">Total</td>
+          <td style="padding:8px;color:#dc2626;">{{ total_beli|rp }}</td>
+          <td></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p style="text-align:center;color:#94a3b8;padding:32px 0;">Belum ada data pembelian bahan</p>
+  {% endif %}
+</div>
+
+<!-- Tab Operasional -->
+<div id="tab-content-ops" class="card" style="display:none;">
+  {% if operasional %}
+  <div style="overflow-x:auto;">
+    <table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <thead>
+        <tr style="border-bottom:1.5px solid #e7f3e8;">
+          <th style="text-align:left;padding:8px;color:#64748b;">Tanggal</th>
+          <th style="text-align:left;padding:8px;color:#64748b;">Kategori</th>
+          <th style="text-align:left;padding:8px;color:#64748b;">Keterangan</th>
+          <th style="text-align:left;padding:8px;color:#64748b;">Nominal</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for o in operasional %}
+        <tr style="border-bottom:1px solid #f0f4f0;">
+          <td style="padding:8px;">{{ o.tanggal }}</td>
+          <td style="padding:8px;"><span class="badge badge-yellow">{{ o.kategori or '-' }}</span></td>
+          <td style="padding:8px;">{{ o.keterangan }}</td>
+          <td style="padding:8px;font-weight:700;color:#dc2626;">{{ o.nominal|rp }}</td>
+          <td style="padding:8px;">
+            <form method="post" action="/keuangan/operasional/{{ o.id }}/hapus" onsubmit="return confirm('Hapus?')">
+              <button class="btn-danger" style="padding:4px 8px;">🗑</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+        <tr style="background:#fef2f2;font-weight:700;">
+          <td colspan="3" style="padding:8px;">Total</td>
+          <td style="padding:8px;color:#dc2626;">{{ total_ops|rp }}</td>
+          <td></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p style="text-align:center;color:#94a3b8;padding:32px 0;">Belum ada biaya operasional</p>
+  {% endif %}
+</div>
+
+<!-- Modal Pembelian Bahan -->
+<div id="modal-beli" class="modal-overlay hidden">
+  <div style="background:#fff;border-radius:18px;width:100%;max-width:440px;padding:24px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+      <h3 style="font-size:15px;font-weight:700;color:#1B5E20;">📦 Pembelian Bahan</h3>
+      <button onclick="document.getElementById('modal-beli').classList.add('hidden')" style="background:none;border:none;font-size:20px;cursor:pointer;color:#94a3b8;">×</button>
+    </div>
+    <form method="post" action="/keuangan/pembelian/tambah">
+      <div style="display:grid;gap:12px;">
+        <div>
+          <label class="form-label">Tanggal *</label>
+          <input name="tanggal" type="date" required class="form-input" value="{{ now.strftime('%Y-%m-%d') }}">
+        </div>
+        <div>
+          <label class="form-label">Nama Bahan *</label>
+          {% if bahan_list %}
+          <select id="sel-bahan" onchange="pilihBahan(this.value)" class="form-input" style="margin-bottom:6px;">
+            <option value="">— Pilih bahan —</option>
+            {% for b in bahan_list %}
+            <option value="{{ b.nama }}" data-satuan="{{ b.satuan }}" data-harga="{{ b.harga_satuan }}">{{ b.nama }} ({{ b.satuan }})</option>
+            {% endfor %}
+            <option value="__lain__">— Lainnya (ketik manual) —</option>
+          </select>
+          <input id="input-bahan-manual" name="nama_bahan" class="form-input" placeholder="Nama bahan manual" style="display:none;">
+          <input id="input-bahan-hidden" name="nama_bahan" class="form-input" readonly style="background:#f9fafb;">
+          {% else %}
+          <input name="nama_bahan" required class="form-input" placeholder="Serbuk gergaji, bekatul, dll">
+          {% endif %}
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div>
+            <label class="form-label">Jumlah *</label>
+            <input name="jumlah" type="number" step="0.1" required class="form-input" value="0" oninput="hitungBeli()">
+          </div>
+          <div>
+            <label class="form-label">Satuan</label>
+            <input id="input-satuan" name="satuan" class="form-input" placeholder="kg, liter, karung">
+          </div>
+        </div>
+        <div>
+          <label class="form-label">Harga Satuan (Rp) *</label>
+          <input id="input-harga" name="harga_satuan" type="number" required class="form-input" value="0" oninput="hitungBeli()">
+        </div>
+        <div style="background:#fef2f2;border-radius:8px;padding:10px;font-size:13px;font-weight:700;color:#dc2626;">
+          Total: <span id="total-beli">Rp 0</span>
+        </div>
+        <div>
+          <label class="form-label">Catatan</label>
+          <input name="catatan" class="form-input" placeholder="Opsional">
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:18px;">
+        <button type="button" onclick="document.getElementById('modal-beli').classList.add('hidden')" class="btn-secondary" style="flex:1;justify-content:center;">Batal</button>
+        <button type="submit" class="btn-primary" style="flex:1;justify-content:center;">Simpan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal Operasional -->
+<div id="modal-ops" class="modal-overlay hidden">
+  <div style="background:#fff;border-radius:18px;width:100%;max-width:440px;padding:24px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+      <h3 style="font-size:15px;font-weight:700;color:#1B5E20;">🔧 Biaya Operasional</h3>
+      <button onclick="document.getElementById('modal-ops').classList.add('hidden')" style="background:none;border:none;font-size:20px;cursor:pointer;color:#94a3b8;">×</button>
+    </div>
+    <form method="post" action="/keuangan/operasional/tambah">
+      <div style="display:grid;gap:12px;">
+        <div>
+          <label class="form-label">Tanggal *</label>
+          <input name="tanggal" type="date" required class="form-input" value="{{ now.strftime('%Y-%m-%d') }}">
+        </div>
+        <div>
+          <label class="form-label">Kategori</label>
+          <select name="kategori" class="form-input">
+            <option value="listrik">Listrik</option>
+            <option value="air">Air</option>
+            <option value="tenaga_kerja">Tenaga Kerja</option>
+            <option value="transportasi">Transportasi</option>
+            <option value="peralatan">Peralatan</option>
+            <option value="lainnya">Lainnya</option>
+          </select>
+        </div>
+        <div>
+          <label class="form-label">Keterangan *</label>
+          <input name="keterangan" required class="form-input" placeholder="Keterangan biaya">
+        </div>
+        <div>
+          <label class="form-label">Nominal (Rp) *</label>
+          <input name="nominal" type="number" required class="form-input" value="0">
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:18px;">
+        <button type="button" onclick="document.getElementById('modal-ops').classList.add('hidden')" class="btn-secondary" style="flex:1;justify-content:center;">Batal</button>
+        <button type="submit" class="btn-primary" style="flex:1;justify-content:center;">Simpan</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function showTab(tab) {
+  ['beli','ops'].forEach(t => {
+    document.getElementById('tab-content-'+t).style.display = t===tab ? 'block' : 'none';
+    const btn = document.getElementById('tab-'+t);
+    btn.style.background = t===tab ? '#2E7D32' : '#fff';
+    btn.style.color = t===tab ? '#fff' : '#64748b';
+    btn.style.border = t===tab ? 'none' : '1.5px solid #e2e8f0';
+  });
+}
+function pilihBahan(val) {
+  const sel = document.getElementById('sel-bahan');
+  const manual = document.getElementById('input-bahan-manual');
+  const hidden = document.getElementById('input-bahan-hidden');
+  if (!sel) return;
+  if (val === '__lain__') {
+    manual.style.display = 'block';
+    manual.required = true;
+    hidden.style.display = 'none';
+    hidden.removeAttribute('name');
+    manual.name = 'nama_bahan';
+  } else {
+    manual.style.display = 'none';
+    manual.required = false;
+    manual.name = '';
+    hidden.style.display = 'block';
+    hidden.name = 'nama_bahan';
+    hidden.value = val;
+    const opt = sel.options[sel.selectedIndex];
+    if (opt) {
+      document.getElementById('input-satuan').value = opt.dataset.satuan || '';
+      const harga = parseFloat(opt.dataset.harga) || 0;
+      if (harga > 0) {
+        document.getElementById('input-harga').value = harga;
+        hitungBeli();
+      }
+    }
+  }
+}
+function hitungBeli() {
+  const modal = document.getElementById('modal-beli');
+  const jml = parseFloat(modal.querySelector('[name=jumlah]').value) || 0;
+  const harga = parseFloat(modal.querySelector('[name=harga_satuan]').value) || 0;
+  document.getElementById('total-beli').textContent = 'Rp ' + (jml*harga).toLocaleString('id');
+}
+</script>
+{% endblock %}

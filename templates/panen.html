@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% set active = "panen" %}
+{% block title %}Panen — Jamur Tiram{% endblock %}
+{% block topbar_title %}Catatan Panen{% endblock %}
+
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
+  <form method="get" style="display:flex;align-items:center;gap:8px;">
+    <span style="font-size:13px;color:#374151;font-weight:600;">Periode:</span>
+    <input type="month" name="bulan" value="{{ bulan }}" onchange="this.form.submit()"
+      style="border:1.5px solid #c8e6c9;border-radius:8px;padding:6px 10px;font-size:13px;color:#1B5E20;background:#f0fdf4;outline:none;">
+  </form>
+  <button onclick="document.getElementById('modal-tambah').classList.remove('hidden')" class="btn-primary">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+    Catat Panen
+  </button>
+</div>
+
+<!-- Ringkasan -->
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-bottom:20px;">
+  <div class="stat-card">
+    <div style="font-size:11px;color:#64748b;font-weight:600;">Total Panen Bulan Ini</div>
+    <div style="font-size:26px;font-weight:800;color:#2E7D32;">{{ "%.1f"|format(total_kg) }}</div>
+    <div style="font-size:11px;color:#94a3b8;">kg</div>
+  </div>
+  <div class="stat-card">
+    <div style="font-size:11px;color:#64748b;font-weight:600;">Batch Siap Panen</div>
+    <div style="font-size:26px;font-weight:800;color:#FFC107;">{{ batches|length }}</div>
+    <div style="font-size:11px;color:#94a3b8;">batch</div>
+  </div>
+</div>
+
+<!-- Tabel Panen -->
+<div class="card">
+  <h3 style="font-size:13px;font-weight:700;color:#1B5E20;margin-bottom:14px;">🍄 Data Panen</h3>
+  {% if panen_list %}
+  <div style="overflow-x:auto;">
+    <table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <thead>
+        <tr style="border-bottom:1.5px solid #e7f3e8;">
+          <th style="text-align:left;padding:8px;color:#64748b;font-weight:600;">Tanggal</th>
+          <th style="text-align:left;padding:8px;color:#64748b;font-weight:600;">Batch</th>
+          <th style="text-align:left;padding:8px;color:#64748b;font-weight:600;">Berat (kg)</th>
+          <th style="text-align:left;padding:8px;color:#64748b;font-weight:600;">Kualitas</th>
+          <th style="text-align:left;padding:8px;color:#64748b;font-weight:600;">Est. Harga/kg</th>
+          <th style="text-align:left;padding:8px;color:#64748b;font-weight:600;">Catatan</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in panen_list %}
+        <tr style="border-bottom:1px solid #f0f4f0;">
+          <td style="padding:8px;">{{ p.tanggal }}</td>
+          <td style="padding:8px;">
+            <a href="/batch/{{ p.batch_id }}" style="color:#2E7D32;font-weight:600;text-decoration:none;">{{ p.batch_kode }}</a>
+          </td>
+          <td style="padding:8px;font-weight:700;color:#2E7D32;font-size:14px;">{{ p.berat_kg }} kg</td>
+          <td style="padding:8px;">
+            <span class="badge {% if p.kualitas=='A' %}badge-green{% elif p.kualitas=='B' %}badge-yellow{% else %}badge-gray{% endif %}">{{ p.kualitas }}</span>
+          </td>
+          <td style="padding:8px;">{{ p.harga_estimasi|rp }}</td>
+          <td style="padding:8px;color:#94a3b8;">{{ p.catatan or '-' }}</td>
+          <td style="padding:8px;">
+            <form method="post" action="/panen/{{ p.id }}/hapus" onsubmit="return confirm('Hapus data panen?')">
+              <button class="btn-danger" style="padding:4px 8px;">🗑</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p style="text-align:center;color:#94a3b8;padding:32px 0;font-size:13px;">Belum ada data panen bulan ini</p>
+  {% endif %}
+</div>
+
+<!-- Modal Tambah -->
+<div id="modal-tambah" class="modal-overlay hidden">
+  <div style="background:#fff;border-radius:18px;width:100%;max-width:440px;padding:24px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+      <h3 style="font-size:15px;font-weight:700;color:#1B5E20;">🍄 Catat Panen</h3>
+      <button onclick="document.getElementById('modal-tambah').classList.add('hidden')" style="background:none;border:none;font-size:20px;cursor:pointer;color:#94a3b8;">×</button>
+    </div>
+    <form method="post" action="/panen/tambah">
+      <div style="display:grid;gap:12px;">
+        <div>
+          <label class="form-label">Batch *</label>
+          <select name="batch_id" required class="form-input">
+            <option value="">— Pilih Batch —</option>
+            {% for b in batches %}
+            <option value="{{ b.id }}">{{ b.kode }}{% if b.nama %} — {{ b.nama }}{% endif %}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="form-label">Tanggal Panen *</label>
+          <input name="tanggal" type="date" required class="form-input" value="{{ now.strftime('%Y-%m-%d') }}">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div>
+            <label class="form-label">Berat (kg) *</label>
+            <input name="berat_kg" type="number" step="0.1" required class="form-input" value="0">
+          </div>
+          <div>
+            <label class="form-label">Kualitas</label>
+            <select name="kualitas" class="form-input">
+              <option value="A">A — Premium</option>
+              <option value="B">B — Standar</option>
+              <option value="C">C — Grade C</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="form-label">Est. Harga/kg (Rp)</label>
+          <input name="harga_estimasi" type="number" class="form-input" value="0">
+        </div>
+        <div>
+          <label class="form-label">Catatan</label>
+          <input name="catatan" class="form-input" placeholder="Opsional">
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:18px;">
+        <button type="button" onclick="document.getElementById('modal-tambah').classList.add('hidden')" class="btn-secondary" style="flex:1;justify-content:center;">Batal</button>
+        <button type="submit" class="btn-primary" style="flex:1;justify-content:center;">Simpan</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
