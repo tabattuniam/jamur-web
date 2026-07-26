@@ -1,26 +1,31 @@
+# Database
+*.db
+*.sqlite
+*.sqlite3
+data/*.db
+
+# Logs
+*.log
+*.log.*
+logs/
+
+# Environment
+.env
+*.env
+config.local.*
+
 # Python
 __pycache__/
 *.pyc
 *.pyo
-*.pyd
 .venv/
 venv/
-env/
-*.egg-info/
 
-# Database (keep .db files - uncomment to exclude)
-# *.db
-
-# Logs
-*.log
+# Upload files
+static/uploads/
+static/logo_lembaga/
+uploads/
 
 # OS
 .DS_Store
 Thumbs.db
-
-# Configs dengan secret
-configs/secret*.yml
-configs/secret*.yaml
-*.env
-.env
-
