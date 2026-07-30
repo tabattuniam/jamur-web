@@ -27,6 +27,9 @@
               {{ "%.1f"|format(b.stok) }}
             </div>
             <div style="font-size:10px;color:#94a3b8;">{{ b.satuan }}</div>
+            {% if b.yield_per_unit and b.yield_per_unit > 0 %}
+            <div style="font-size:10px;color:#0d9488;font-weight:700;">≈ {{ "%.1f"|format(b.stok * b.yield_per_unit) }} sesi</div>
+            {% endif %}
           </div>
         </a>
         {% endfor %}
@@ -35,7 +38,8 @@
       <div style="text-align:center;padding:20px;color:#94a3b8;font-size:12px;">Belum ada bahan baku</div>
       {% endif %}
 
-      <!-- Form tambah bahan -->
+      <!-- Form tambah bahan (admin/owner only) -->
+      {% if user and 'stok_write' in perms %}
       <div style="border-top:1px solid #e7f3e8;padding-top:12px;">
         <div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:8px;">+ Tambah Bahan Baru</div>
         <form method="post" action="/stok/tambah-bahan">
@@ -46,10 +50,12 @@
               <input name="harga_satuan" type="number" class="form-input" placeholder="Harga/satuan" value="0">
             </div>
             <input name="stok_min" type="number" step="0.1" class="form-input" placeholder="Stok minimum (alert)" value="0">
+            <input name="yield_per_unit" type="number" step="0.1" class="form-input" placeholder="Sesi per satuan (0=abaikan)" value="0" title="Mis: kayu bakar satuan=mobil, yield=2 artinya 1 mobil = 2 sesi sterilisasi">
           </div>
           <button type="submit" class="btn-primary" style="margin-top:8px;width:100%;justify-content:center;">+ Tambah</button>
         </form>
       </div>
+      {% endif %}
     </div>
   </div>
 
@@ -65,19 +71,26 @@
           {% if bahan_aktif.stok_min > 0 %}
           <div style="font-size:11px;color:#94a3b8;">Stok minimum: {{ bahan_aktif.stok_min }} {{ bahan_aktif.satuan }}</div>
           {% endif %}
+          {% if bahan_aktif.yield_per_unit and bahan_aktif.yield_per_unit > 0 %}
+          <div style="font-size:11px;color:#0d9488;font-weight:600;margin-top:3px;">1 {{ bahan_aktif.satuan }} = {{ bahan_aktif.yield_per_unit }} sesi sterilisasi</div>
+          {% endif %}
         </div>
         <div style="text-align:right;">
           <div style="font-size:32px;font-weight:900;color:{% if bahan_aktif.stok <= bahan_aktif.stok_min and bahan_aktif.stok_min > 0 %}#dc2626{% else %}#2E7D32{% endif %};">
             {{ "%.1f"|format(bahan_aktif.stok) }}
           </div>
           <div style="font-size:12px;color:#64748b;">{{ bahan_aktif.satuan }} tersisa</div>
+          {% if bahan_aktif.yield_per_unit and bahan_aktif.yield_per_unit > 0 %}
+          <div style="font-size:13px;font-weight:700;color:#0d9488;margin-top:4px;">≈ {{ "%.1f"|format(bahan_aktif.stok * bahan_aktif.yield_per_unit) }} sesi</div>
+          {% endif %}
           {% if bahan_aktif.stok <= bahan_aktif.stok_min and bahan_aktif.stok_min > 0 %}
           <span class="badge badge-red" style="margin-top:4px;">⚠️ Stok Rendah</span>
           {% endif %}
         </div>
       </div>
 
-      <!-- Form Masuk & Keluar -->
+      <!-- Form Masuk & Keluar (admin/owner only) -->
+      {% if user and 'stok_write' in perms %}
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
         <!-- Stok Masuk -->
         <div style="background:#f0fdf4;border-radius:8px;padding:12px;">
@@ -106,16 +119,19 @@
           </form>
         </div>
       </div>
+      {% endif %}
 
-      <!-- Edit bahan -->
+      <!-- Edit bahan (admin/owner only) -->
+      {% if user and 'stok_write' in perms %}
       <details style="margin-top:12px;">
         <summary style="font-size:12px;color:#64748b;cursor:pointer;">Edit data bahan ini</summary>
         <form method="post" action="/stok/{{ bahan_aktif.id }}/edit" style="margin-top:8px;">
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
             <input name="nama" class="form-input" value="{{ bahan_aktif.nama }}" required placeholder="Nama">
-            <input name="satuan" class="form-input" value="{{ bahan_aktif.satuan }}" placeholder="Satuan">
+            <input name="satuan" class="form-input" value="{{ bahan_aktif.satuan }}" placeholder="Satuan (mis: mobil)">
             <input name="harga_satuan" type="number" class="form-input" value="{{ bahan_aktif.harga_satuan|int }}" placeholder="Harga/satuan">
             <input name="stok_min" type="number" step="0.1" class="form-input" value="{{ bahan_aktif.stok_min }}" placeholder="Stok min">
+            <input name="yield_per_unit" type="number" step="0.1" class="form-input" value="{{ bahan_aktif.yield_per_unit }}" placeholder="Sesi/satuan (0=abaikan)" style="grid-column:span 2;" title="Mis: 2 = 1 mobil kayu bakar cukup 2 sesi sterilisasi">
           </div>
           <div style="display:flex;gap:6px;margin-top:8px;">
             <button type="submit" class="btn-secondary" style="font-size:12px;">Simpan Edit</button>
@@ -125,6 +141,7 @@
           </div>
         </form>
       </details>
+      {% endif %}
     </div>
 
     <!-- Riwayat Transaksi -->
@@ -162,9 +179,11 @@
               <td style="padding:7px 8px;text-align:right;">{% if t.total > 0 %}{{ t.total|rp }}{% else %}-{% endif %}</td>
               <td style="padding:7px 8px;color:#64748b;">{{ t.keterangan or '-' }}</td>
               <td style="padding:7px 8px;">
+                {% if user and 'stok_write' in perms %}
                 <form method="post" action="/stok/transaksi/{{ t.id }}/hapus" onsubmit="return confirm('Hapus transaksi ini? Stok akan dikembalikan.')">
                   <button class="btn-danger" style="padding:3px 8px;font-size:11px;">🗑</button>
                 </form>
+                {% endif %}
               </td>
             </tr>
             {% endfor %}

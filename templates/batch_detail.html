@@ -18,9 +18,12 @@
       {% if batch.nama %}<div style="font-size:13px;color:#64748b;">{{ batch.nama }}</div>{% endif %}
       <div style="font-size:12px;color:#94a3b8;margin-top:4px;">📅 Mulai: {{ batch.tanggal_mulai }}</div>
     </div>
-    <span class="badge badge-{% if batch.status=='panen' %}green{% elif batch.status=='inkubasi' %}purple{% elif batch.status=='selesai' %}gray{% else %}yellow{% endif %}" style="font-size:13px;padding:6px 12px;">
-      {{ sl[0] }} {{ sl[1] }}
-    </span>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+      <a href="/batch/{{ batch.id }}/laporan" class="btn-secondary" style="font-size:12px;padding:6px 12px;">📋 Laporan</a>
+      <span class="badge badge-{% if batch.status=='panen' %}green{% elif batch.status=='inkubasi' %}purple{% elif batch.status=='selesai' %}gray{% else %}yellow{% endif %}" style="font-size:13px;padding:6px 12px;">
+        {{ sl[0] }} {{ sl[1] }}
+      </span>
+    </div>
   </div>
 </div>
 
@@ -177,8 +180,8 @@
           <input name="jumlah_baglog" type="number" required class="form-input" min="1" value="0">
         </div>
         <div>
-          <label class="form-label">Plastik (pcs)</label>
-          <input name="plastik" type="number" class="form-input" min="0" value="0">
+          <label class="form-label">Plastik (kg)</label>
+          <input name="plastik" type="number" step="0.5" class="form-input" min="0" value="0">
         </div>
         <div>
           <label class="form-label">Cincin (pcs)</label>
@@ -210,11 +213,17 @@
   {% elif batch.status == 'sterilisasi' %}
   <!-- MULTI-SESI STERILISASI -->
   {% set total_steril = sterilisasi_list|sum(attribute='jumlah_baglog') %}
+  {% set total_carry  = sterilisasi_list|sum(attribute='carry_over_jumlah') %}
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
     <h4 style="font-size:13px;font-weight:700;color:#991b1b;margin:0;">🔥 Sterilisasi (Bertahap)</h4>
     <div style="font-size:12px;color:#64748b;">
       Disteril: <b style="color:#991b1b;font-size:16px;">{{ total_steril }}</b>
       / {{ analisis.jumlah_baglog }} baglog
+      {% if total_carry > 0 %}
+      <span style="margin-left:6px;background:#fef9c3;color:#92400e;padding:2px 7px;border-radius:10px;font-size:11px;font-weight:700;">
+        + {{ total_carry }} carry-over
+      </span>
+      {% endif %}
     </div>
   </div>
 
@@ -223,8 +232,10 @@
     <table style="width:100%;border-collapse:collapse;font-size:12px;">
       <thead>
         <tr style="border-bottom:1px solid #fecaca;background:#fff5f5;">
+          <th style="text-align:left;padding:7px 8px;color:#64748b;">Kode</th>
           <th style="text-align:left;padding:7px 8px;color:#64748b;">Tanggal</th>
           <th style="text-align:right;padding:7px 8px;color:#64748b;">Baglog</th>
+          <th style="text-align:left;padding:7px 8px;color:#64748b;">Carry-Over</th>
           <th style="text-align:left;padding:7px 8px;color:#64748b;">Jam</th>
           <th style="text-align:right;padding:7px 8px;color:#64748b;">Suhu</th>
           <th style="text-align:right;padding:7px 8px;color:#64748b;">Kayu Bakar</th>
@@ -235,8 +246,21 @@
       <tbody>
         {% for s in sterilisasi_list %}
         <tr style="border-bottom:1px solid #f0f4f0;">
+          <td style="padding:7px 8px;">
+            {% if s.kode_steril %}
+            <span style="font-family:monospace;font-size:11px;font-weight:700;background:#fef3c7;color:#92400e;padding:2px 6px;border-radius:5px;">{{ s.kode_steril }}</span>
+            {% else %}<span style="color:#e2e8f0;font-size:11px;">—</span>{% endif %}
+          </td>
           <td style="padding:7px 8px;">{{ s.tanggal }}</td>
           <td style="padding:7px 8px;text-align:right;font-weight:700;color:#991b1b;">{{ s.jumlah_baglog }}</td>
+          <td style="padding:7px 8px;">
+            {% if s.carry_over_jumlah %}
+            {% set co_batch = all_batches | selectattr('id','equalto',s.carry_over_batch_id) | first | default(None) %}
+            <span style="background:#fef9c3;color:#92400e;padding:2px 7px;border-radius:8px;font-size:11px;font-weight:700;">
+              +{{ s.carry_over_jumlah }} dari {{ co_batch.kode if co_batch else s.carry_over_batch_id }}
+            </span>
+            {% else %}-{% endif %}
+          </td>
           <td style="padding:7px 8px;color:#64748b;font-size:11px;">
             {% if s.jam_mulai %}{{ s.jam_mulai }}{% if s.jam_selesai %} – {{ s.jam_selesai }}{% endif %}{% else %}-{% endif %}
           </td>
@@ -253,7 +277,39 @@
         <tr style="background:#fff5f5;font-weight:700;border-top:2px solid #fecaca;">
           <td style="padding:7px 8px;color:#991b1b;">Total</td>
           <td style="padding:7px 8px;text-align:right;font-size:15px;color:#991b1b;">{{ total_steril }}</td>
+          <td style="padding:7px 8px;font-size:12px;color:#92400e;">
+            {% if total_carry > 0 %}+{{ total_carry }} carry-over{% endif %}
+          </td>
           <td colspan="5"></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  <!-- Carry-Over Keluar (baglog dikirim ke batch lain) -->
+  {% if carry_over_keluar %}
+  <div style="background:#fefce8;border:1.5px solid #fde047;border-radius:10px;padding:12px 14px;margin-bottom:12px;">
+    <div style="font-size:12px;font-weight:700;color:#713f12;margin-bottom:8px;">🔁 Baglog Dikirim ke Batch Lain (Carry-Over Keluar)</div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <thead>
+        <tr style="border-bottom:1px solid #fde047;">
+          <th style="text-align:left;padding:5px 6px;color:#92400e;">Tanggal</th>
+          <th style="text-align:left;padding:5px 6px;color:#92400e;">Ke Batch</th>
+          <th style="text-align:right;padding:5px 6px;color:#92400e;">Jumlah</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for co in carry_over_keluar %}
+        <tr style="border-bottom:1px solid #fef9c3;">
+          <td style="padding:5px 6px;">{{ co.tanggal }}</td>
+          <td style="padding:5px 6px;font-weight:700;color:#713f12;">{{ co.ke_batch_kode }}{% if co.ke_batch_nama %} — {{ co.ke_batch_nama }}{% endif %}</td>
+          <td style="padding:5px 6px;text-align:right;font-weight:700;color:#92400e;">{{ co.jumlah }} baglog</td>
+        </tr>
+        {% endfor %}
+        <tr style="font-weight:700;border-top:1.5px solid #fde047;background:#fef9c3;">
+          <td colspan="2" style="padding:5px 6px;color:#713f12;">Total Keluar</td>
+          <td style="padding:5px 6px;text-align:right;color:#92400e;">{{ total_co_keluar }} baglog</td>
         </tr>
       </tbody>
     </table>
@@ -262,11 +318,16 @@
 
   <!-- Progress bar sterilisasi -->
   {% if analisis.jumlah_baglog > 0 %}
-  {% set pct_steril = (total_steril / analisis.jumlah_baglog * 100)|round(1) %}
+  {% set sudah_proses = total_steril + total_co_keluar %}
+  {% set pct_steril = (sudah_proses / analisis.jumlah_baglog * 100)|round(1) %}
   <div style="background:#f1f5f9;border-radius:99px;height:8px;margin-bottom:4px;overflow:hidden;">
     <div style="height:100%;width:{{ [pct_steril,100]|min }}%;background:#991b1b;border-radius:99px;"></div>
   </div>
-  <div style="font-size:11px;color:#64748b;margin-bottom:12px;">{{ pct_steril }}% baglog sudah disteril ({{ total_steril }}/{{ analisis.jumlah_baglog }})</div>
+  <div style="font-size:11px;color:#64748b;margin-bottom:12px;">
+    {{ pct_steril }}% baglog sudah diproses
+    ({{ total_steril }} disteril sendiri{% if total_co_keluar %} + {{ total_co_keluar }} carry-over ke batch lain{% endif %}
+    / {{ analisis.jumlah_baglog }})
+  </div>
   {% endif %}
 
   <!-- Form tambah sesi sterilisasi -->
@@ -306,7 +367,34 @@
           <label class="form-label">Biaya Bahan Bakar (Rp)</label>
           <input name="biaya" type="number" class="form-input" value="0">
         </div>
+        <div style="grid-column:span 2;">
+          <label class="form-label">Kode Sterilisasi</label>
+          <input name="kode_steril" class="form-input" placeholder="Contoh: STR-001, S1, dll (opsional)">
+        </div>
       </div>
+      <!-- Carry-Over dari Batch Lain -->
+      {% if all_batches %}
+      <div style="border-top:1px dashed #fecaca;margin-top:12px;padding-top:12px;">
+        <div style="font-size:11px;color:#92400e;font-weight:700;margin-bottom:8px;">🔁 Carry-Over dari Batch Lain (opsional)</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div>
+            <label class="form-label">Dari Batch</label>
+            <select name="carry_over_batch_id" class="form-input">
+              <option value="">— Tidak ada carry-over —</option>
+              {% for b in all_batches %}
+              <option value="{{ b.id }}">{{ b.kode }}{% if b.nama %} — {{ b.nama }}{% endif %}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Jumlah Baglog Carry-Over</label>
+            <input name="carry_over_jumlah" type="number" min="0" class="form-input" value="0" placeholder="0">
+          </div>
+        </div>
+        <div style="font-size:11px;color:#94a3b8;margin-top:6px;">Baglog sisa dari batch sebelumnya yang ikut disterilisasi di sesi ini.</div>
+      </div>
+      {% endif %}
+
       <button type="submit" class="btn-primary" style="margin-top:12px;background:#991b1b;">+ Catat Sesi Sterilisasi</button>
     </form>
   </div>
@@ -420,12 +508,6 @@
       <button type="submit" class="btn-primary" style="margin-top:10px;background:#5b21b6;">+ Tambah Sesi</button>
     </form>
   </div>
-
-  {% if inokulasi_list %}
-  <form method="post" action="/batch/{{ batch.id }}/lanjut/inkubasi" onsubmit="return confirm('Pembibitan selesai? Lanjut ke Inkubasi?')">
-    <button type="submit" class="btn-primary" style="background:#5b21b6;">✅ Pembibitan Selesai — Lanjut ke Inkubasi →</button>
-  </form>
-  {% endif %}
 
   {% elif batch.status == 'inkubasi' %}
   <h4 style="font-size:13px;font-weight:700;color:#7e22ce;margin-bottom:12px;">⏳ Input Inkubasi</h4>

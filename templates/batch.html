@@ -11,10 +11,12 @@
     <a href="/batch?status={{ s }}" class="btn-secondary" style="font-size:12px;padding:6px 12px;{% if filter_status==s %}background:#e8f5e9;border-color:#2E7D32;{% endif %}">{{ icon }} {{ label }}</a>
     {% endfor %}
   </div>
+  {% if 'batch_manage' in perms %}
   <button onclick="document.getElementById('modal-tambah').classList.remove('hidden')" class="btn-primary">
     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
     Batch Baru
   </button>
+  {% endif %}
 </div>
 
 {% if batches %}
@@ -35,6 +37,7 @@
     {% if b.catatan %}<div style="font-size:11px;color:#94a3b8;margin-bottom:10px;">{{ b.catatan }}</div>{% endif %}
     <div style="display:flex;gap:8px;">
       <a href="/batch/{{ b.id }}" class="btn-primary" style="font-size:12px;padding:6px 12px;flex:1;justify-content:center;">Detail</a>
+      {% if 'batch_manage' in perms %}
       <button onclick="openEdit(this)"
         data-id="{{ b.id }}" data-kode="{{ b.kode|e }}" data-nama="{{ b.nama|e }}"
         data-tgl="{{ b.tanggal_mulai }}" data-status="{{ b.status }}" data-catatan="{{ b.catatan|e }}"
@@ -42,6 +45,7 @@
       <form method="post" action="/batch/{{ b.id }}/hapus" onsubmit="return confirm('Hapus batch {{ b.kode }}?')">
         <button class="btn-danger" style="font-size:12px;padding:6px 10px;">🗑</button>
       </form>
+      {% endif %}
     </div>
   </div>
   {% endfor %}

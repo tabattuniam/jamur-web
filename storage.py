@@ -190,6 +190,11 @@ CREATE TABLE IF NOT EXISTS pembayaran_piutang (
     catatan      TEXT DEFAULT '',
     created_at   INTEGER NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS settings (
+    key     TEXT PRIMARY KEY,
+    value   TEXT NOT NULL DEFAULT ''
+);
 """
 
 
@@ -207,12 +212,16 @@ class Storage:
 
     def _migrate(self, con):
         migrations = [
-            ("penjualan",    "tipe_jual",       "TEXT DEFAULT 'timbang'"),
-            ("penjualan",    "jenis_paket",      "TEXT DEFAULT ''"),
-            ("penjualan",    "jumlah_bungkus",   "INTEGER DEFAULT 0"),
-            ("penjualan",    "batch_id",         "TEXT DEFAULT NULL"),
-            ("transaksi_bahan", "batch_id",      "TEXT DEFAULT NULL"),
-            ("sterilisasi",  "jumlah_baglog",    "INTEGER DEFAULT 0"),
+            ("penjualan",    "tipe_jual",           "TEXT DEFAULT 'timbang'"),
+            ("penjualan",    "jenis_paket",          "TEXT DEFAULT ''"),
+            ("penjualan",    "jumlah_bungkus",       "INTEGER DEFAULT 0"),
+            ("penjualan",    "batch_id",             "TEXT DEFAULT NULL"),
+            ("transaksi_bahan", "batch_id",          "TEXT DEFAULT NULL"),
+            ("sterilisasi",  "jumlah_baglog",        "INTEGER DEFAULT 0"),
+            ("sterilisasi",  "carry_over_batch_id",  "TEXT DEFAULT NULL"),
+            ("sterilisasi",  "carry_over_jumlah",    "INTEGER DEFAULT 0"),
+            ("sterilisasi",  "kode_steril",           "TEXT DEFAULT ''"),
+            ("bahan_baku",   "yield_per_unit",        "REAL DEFAULT 0"),
         ]
         for tbl, col, defn in migrations:
             try:
@@ -222,8 +231,9 @@ class Storage:
                 pass
 
     def _conn(self):
-        con = sqlite3.connect(self.db_path)
+        con = sqlite3.connect(self.db_path, timeout=15)
         con.row_factory = sqlite3.Row
+        con.execute("PRAGMA journal_mode=WAL")
         con.execute("PRAGMA foreign_keys = ON")
         return con
 
@@ -447,14 +457,45 @@ class Storage:
         con.close()
         return [dict(r) for r in rows]
 
-    def save_sterilisasi(self, batch_id, tanggal, jumlah_baglog, jam_mulai, jam_selesai, durasi, suhu, biaya, kayu_bakar_kg=0):
+    def list_carry_over_keluar(self, batch_id) -> list[dict]:
+        """Daftar baglog yang dikirim keluar dari batch ini ke batch lain (carry-over)."""
+        con = self._conn()
+        rows = con.execute(
+            """SELECT s.id, s.tanggal, s.carry_over_jumlah as jumlah,
+                      s.batch_id as ke_batch_id,
+                      b.kode as ke_batch_kode, b.nama as ke_batch_nama
+               FROM sterilisasi s
+               JOIN batches b ON b.id = s.batch_id
+               WHERE s.carry_over_batch_id=? AND s.carry_over_jumlah > 0
+               ORDER BY s.tanggal""",
+            (batch_id,)
+        ).fetchall()
+        con.close()
+        return [dict(r) for r in rows]
+
+    def total_carry_over_keluar(self, batch_id) -> int:
+        """Total baglog yang sudah ditransfer keluar dari batch ini."""
+        con = self._conn()
+        row = con.execute(
+            "SELECT COALESCE(SUM(carry_over_jumlah),0) as total FROM sterilisasi WHERE carry_over_batch_id=?",
+            (batch_id,)
+        ).fetchone()
+        con.close()
+        return int(row["total"]) if row else 0
+
+    def save_sterilisasi(self, batch_id, tanggal, jumlah_baglog, jam_mulai, jam_selesai, durasi, suhu, biaya,
+                         kayu_bakar_kg=0, carry_over_batch_id=None, carry_over_jumlah=0, kode_steril=""):
         batch = self.get_batch(batch_id)
         ket = f"Sterilisasi batch {batch['kode'] if batch else batch_id}"
         con = self._conn()
         try:
             con.execute(
-                "INSERT INTO sterilisasi (batch_id,tanggal,jumlah_baglog,jam_mulai,jam_selesai,durasi_jam,suhu,biaya_bahan_bakar,kayu_bakar_kg) VALUES (?,?,?,?,?,?,?,?,?)",
-                (batch_id, tanggal, jumlah_baglog, jam_mulai, jam_selesai, durasi, suhu, biaya, kayu_bakar_kg)
+                """INSERT INTO sterilisasi
+                   (batch_id,tanggal,jumlah_baglog,jam_mulai,jam_selesai,durasi_jam,suhu,
+                    biaya_bahan_bakar,kayu_bakar_kg,carry_over_batch_id,carry_over_jumlah,kode_steril)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (batch_id, tanggal, jumlah_baglog, jam_mulai, jam_selesai, durasi, suhu, biaya,
+                 kayu_bakar_kg, carry_over_batch_id or None, carry_over_jumlah or 0, kode_steril or "")
             )
             self._deduct_bahan(con, "Kayu Bakar", kayu_bakar_kg, tanggal, ket, batch_id)
             con.commit()
@@ -809,22 +850,22 @@ class Storage:
         con.close()
         return dict(row) if row else None
 
-    def save_bahan(self, nama, satuan, harga_satuan, stok_min) -> int:
+    def save_bahan(self, nama, satuan, harga_satuan, stok_min, yield_per_unit=0) -> int:
         con = self._conn()
         cur = con.execute(
-            "INSERT INTO bahan_baku (nama,satuan,harga_satuan,stok_min,stok,created_at) VALUES (?,?,?,?,0,?)",
-            (nama, satuan, harga_satuan, stok_min, int(time.time()))
+            "INSERT INTO bahan_baku (nama,satuan,harga_satuan,stok_min,stok,yield_per_unit,created_at) VALUES (?,?,?,?,0,?,?)",
+            (nama, satuan, harga_satuan, stok_min, yield_per_unit, int(time.time()))
         )
         bid = cur.lastrowid
         con.commit()
         con.close()
         return bid
 
-    def update_bahan(self, bid: int, nama: str, satuan: str, harga_satuan: float, stok_min: float):
+    def update_bahan(self, bid: int, nama: str, satuan: str, harga_satuan: float, stok_min: float, yield_per_unit: float = 0):
         con = self._conn()
         con.execute(
-            "UPDATE bahan_baku SET nama=?,satuan=?,harga_satuan=?,stok_min=? WHERE id=?",
-            (nama, satuan, harga_satuan, stok_min, bid)
+            "UPDATE bahan_baku SET nama=?,satuan=?,harga_satuan=?,stok_min=?,yield_per_unit=? WHERE id=?",
+            (nama, satuan, harga_satuan, stok_min, yield_per_unit, bid)
         )
         con.commit()
         con.close()
@@ -944,6 +985,7 @@ class Storage:
         total_dibibit = con.execute("SELECT COALESCE(SUM(jumlah_baglog),0) FROM inokulasi WHERE batch_id=?", (batch_id,)).fetchone()[0] or 0
         # Panen dari penjualan yang terhubung ke batch ini
         total_panen = float(con.execute("SELECT COALESCE(SUM(berat_kg),0) FROM penjualan WHERE batch_id=?", (batch_id,)).fetchone()[0])
+        total_omzet = float(con.execute("SELECT COALESCE(SUM(total),0) FROM penjualan WHERE batch_id=?", (batch_id,)).fetchone()[0])
         steril = float(con.execute("SELECT COALESCE(SUM(biaya_bahan_bakar),0) FROM sterilisasi WHERE batch_id=?", (batch_id,)).fetchone()[0])
         total_jual_baglog = float(con.execute("SELECT COALESCE(SUM(total),0) FROM penjualan_baglog WHERE batch_id=?", (batch_id,)).fetchone()[0])
         total_baglog_jual = int(con.execute("SELECT COALESCE(SUM(jumlah_baglog),0) FROM penjualan_baglog WHERE batch_id=?", (batch_id,)).fetchone()[0])
@@ -958,6 +1000,7 @@ class Storage:
             "jumlah_baglog": int(pengisian),
             "total_dibibit": int(total_dibibit),
             "total_panen_kg": total_panen,
+            "total_omzet": total_omzet,
             "total_biaya": total_biaya,
             "biaya_per_baglog": biaya_per_baglog,
             "panen_per_baglog": total_panen / int(pengisian) if pengisian > 0 else 0,
@@ -1035,3 +1078,26 @@ class Storage:
             "produktivitas": produktivitas,
             "batch_analisis": batch_analisis,
         }
+
+    # ── Settings / Permissions ─────────────────────────────────────────────────
+
+    def get_setting(self, key: str, default: str = "") -> str:
+        con = self._conn()
+        row = con.execute("SELECT value FROM settings WHERE key=?", (key,)).fetchone()
+        con.close()
+        return row["value"] if row else default
+
+    def set_setting(self, key: str, value: str):
+        con = self._conn()
+        con.execute("INSERT INTO settings (key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (key, value))
+        con.commit()
+        con.close()
+
+    def get_perms_operator(self) -> set:
+        raw = self.get_setting("perms_operator", "")
+        if not raw:
+            return set()
+        return {m.strip() for m in raw.split(",") if m.strip()}
+
+    def set_perms_operator(self, menus: list):
+        self.set_setting("perms_operator", ",".join(menus))

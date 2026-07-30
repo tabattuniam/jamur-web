@@ -25,7 +25,7 @@
         <td style="padding:10px 8px;font-family:monospace;color:#64748b;">{{ u.username }}</td>
         <td style="padding:10px 8px;">
           <span class="badge {% if u.role=='admin' %}badge-red{% elif u.role=='owner' %}badge-blue{% else %}badge-green{% endif %}">
-            {{ u.role|capitalize }}
+            {% if u.role == 'operator' %}Pekerja{% else %}{{ u.role|capitalize }}{% endif %}
           </span>
         </td>
         <td style="padding:10px 8px;text-align:right;">
@@ -57,7 +57,7 @@
         <div>
           <label class="form-label">Role</label>
           <select name="role" class="form-input">
-            <option value="operator">Operator</option>
+            <option value="operator">Pekerja</option>
             <option value="owner">Owner</option>
             <option value="admin">Admin</option>
           </select>
@@ -84,7 +84,7 @@
         <div>
           <label class="form-label">Role</label>
           <select id="e-role" name="role" class="form-input">
-            <option value="operator">Operator</option>
+            <option value="operator">Pekerja</option>
             <option value="owner">Owner</option>
             <option value="admin">Admin</option>
           </select>

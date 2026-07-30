@@ -51,8 +51,8 @@
 <div id="sidebar-overlay" onclick="closeSidebar()"></div>
 
 <!-- Sidebar -->
-<div class="sidebar" id="sidebar">
-  <div style="padding:16px 16px 12px;border-bottom:1px solid rgba(255,255,255,.1);">
+<div class="sidebar" id="sidebar" style="display:flex;flex-direction:column;">
+  <div style="padding:16px 16px 12px;border-bottom:1px solid rgba(255,255,255,.1);flex-shrink:0;">
     <div style="display:flex;align-items:center;justify-content:space-between;">
       <div>
         <div style="font-size:15px;font-weight:800;color:#fff;letter-spacing:-.3px;">🍄 Jamur Tiram</div>
@@ -64,7 +64,7 @@
     </div>
   </div>
 
-  <nav style="padding:8px 0;overflow-y:auto;">
+  <nav style="padding:8px 0;overflow-y:auto;flex:1;">
     <div style="padding:8px 16px 4px;font-size:10px;color:#66bb6a;font-weight:700;text-transform:uppercase;letter-spacing:.5px;">Menu</div>
 
     <a href="/" class="sidebar-link {% if active=='dashboard' %}active{% endif %}">
@@ -84,41 +84,56 @@
       Panen
     </a>
 
+    {% set has_keuangan = 'penjualan' in perms or 'penjualan_baglog' in perms or 'piutang' in perms or 'keuangan' in perms or 'laporan' in perms or 'analisis' in perms %}
+    {% if has_keuangan %}
     <div style="padding:8px 16px 4px;font-size:10px;color:#66bb6a;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-top:4px;">Keuangan</div>
+    {% endif %}
 
+    {% if 'penjualan' in perms %}
     <a href="/penjualan" class="sidebar-link {% if active=='penjualan' %}active{% endif %}">
       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
       Jual Jamur
     </a>
+    {% endif %}
 
+    {% if 'penjualan_baglog' in perms %}
     <a href="/penjualan-baglog" class="sidebar-link {% if active=='penjualan_baglog' %}active{% endif %}">
       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/></svg>
       Jual Baglog
     </a>
+    {% endif %}
 
-    <a href="/stok" class="sidebar-link {% if active=='stok' %}active{% endif %}">
-      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
-      Stok Bahan
-    </a>
-
-    <a href="/keuangan" class="sidebar-link {% if active=='keuangan' %}active{% endif %}">
-      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
-      Pengeluaran
-    </a>
-
+    {% if 'piutang' in perms %}
     <a href="/piutang" class="sidebar-link {% if active=='piutang' %}active{% endif %}">
       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
       Piutang
     </a>
+    {% endif %}
 
+    {% if 'keuangan' in perms %}
+    <a href="/keuangan" class="sidebar-link {% if active=='keuangan' %}active{% endif %}">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+      Pengeluaran
+    </a>
+    {% endif %}
+
+    {% if 'laporan' in perms %}
     <a href="/laporan" class="sidebar-link {% if active=='laporan' %}active{% endif %}">
       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
       Laporan
     </a>
+    {% endif %}
 
+    {% if 'analisis' in perms %}
     <a href="/analisis" class="sidebar-link {% if active=='analisis' %}active{% endif %}">
       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
       Analisis Usaha
+    </a>
+    {% endif %}
+
+    <a href="/stok" class="sidebar-link {% if active=='stok' %}active{% endif %}">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+      Stok Bahan
     </a>
 
     {% if user and user.role == 'admin' %}
@@ -127,17 +142,24 @@
       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
       Pengguna
     </a>
+    <a href="/admin/permissions" class="sidebar-link {% if active=='permissions' %}active{% endif %}">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+      Hak Akses Pekerja
+    </a>
     {% endif %}
   </nav>
 
-  <div style="position:absolute;bottom:0;left:0;right:0;padding:12px 16px;border-top:1px solid rgba(255,255,255,.1);">
+  <div style="flex-shrink:0;padding:12px 16px;border-top:1px solid rgba(255,255,255,.1);">
     {% if user %}
     <div style="display:flex;align-items:center;justify-content:space-between;">
       <div>
         <div style="font-size:12px;font-weight:600;color:#fff;">{{ user.nama }}</div>
-        <div style="font-size:10px;color:#a5d6a7;">{{ user.role|capitalize }}</div>
+        <div style="font-size:10px;color:#a5d6a7;">{% if user.role == 'operator' %}Pekerja{% else %}{{ user.role|capitalize }}{% endif %}</div>
       </div>
-      <a href="/logout" style="color:#ef9a9a;font-size:11px;text-decoration:none;">Keluar</a>
+      <a href="/logout" style="display:inline-flex;align-items:center;gap:4px;color:#ef9a9a;font-size:11px;font-weight:600;text-decoration:none;background:rgba(239,154,154,.12);padding:5px 10px;border-radius:7px;">
+        <svg style="width:13px;height:13px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+        Keluar
+      </a>
     </div>
     {% endif %}
   </div>

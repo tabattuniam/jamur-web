@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Laporan Batch {{ batch.kode }} — Jamur Tiram</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 13px; color: #1e293b; background: #f8fafc; }
+    .page { max-width: 800px; margin: 0 auto; padding: 20px; }
+    .print-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding: 10px 16px; background: #fff; border-radius: 10px; border: 1px solid #e2e8f0; }
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; text-decoration: none; }
+    .btn-primary { background: #2E7D32; color: #fff; }
+    .btn-secondary { background: #f1f5f9; color: #374151; border: 1px solid #e2e8f0; }
+    .header-card { background: #fff; border-radius: 12px; padding: 20px 24px; margin-bottom: 16px; border-left: 5px solid #2E7D32; }
+    .batch-code { font-size: 26px; font-weight: 800; color: #1B5E20; }
+    .batch-meta { font-size: 12px; color: #64748b; margin-top: 4px; }
+    .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+    .badge-green { background: #dcfce7; color: #166534; }
+    .badge-yellow { background: #fef9c3; color: #713f12; }
+    .badge-purple { background: #f3e8ff; color: #6b21a8; }
+    .badge-gray { background: #f1f5f9; color: #475569; }
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-bottom: 16px; }
+    .stat-box { background: #fff; border-radius: 10px; padding: 12px 14px; border: 1px solid #e7f3e8; }
+    .stat-label { font-size: 10px; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+    .stat-val { font-size: 22px; font-weight: 800; color: #1B5E20; line-height: 1; }
+    .stat-sub { font-size: 10px; color: #94a3b8; margin-top: 3px; }
+    .section { background: #fff; border-radius: 10px; padding: 16px; margin-bottom: 14px; }
+    .section-title { font-size: 13px; font-weight: 700; color: #1B5E20; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th { text-align: left; padding: 7px 8px; color: #64748b; font-weight: 600; border-bottom: 1.5px solid #e7f3e8; background: #f9fdf9; }
+    th.r, td.r { text-align: right; }
+    td { padding: 7px 8px; border-bottom: 1px solid #f1f5f9; }
+    tr:last-child td { border-bottom: none; }
+    .total-row td { font-weight: 700; border-top: 2px solid #e7f3e8; background: #f0fdf4; color: #1B5E20; }
+    .kode-badge { font-family: monospace; font-size: 11px; font-weight: 700; background: #fef3c7; color: #92400e; padding: 2px 6px; border-radius: 5px; }
+    .summary-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
+    .summary-row:last-child { border-bottom: none; }
+    .summary-row .lbl { color: #64748b; }
+    .summary-row .val { font-weight: 600; color: #1e293b; }
+    .fin-box { border-radius: 10px; padding: 14px 16px; }
+    .fin-box.green { background: #f0fdf4; border: 1.5px solid #86efac; }
+    .fin-box.red { background: #fff5f5; border: 1.5px solid #fca5a5; }
+    .fin-label { font-size: 11px; color: #64748b; font-weight: 600; margin-bottom: 4px; }
+    .fin-val { font-size: 22px; font-weight: 800; }
+    .fin-val.green { color: #15803d; }
+    .fin-val.red { color: #dc2626; }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .empty-note { color: #94a3b8; font-size: 12px; text-align: center; padding: 12px 0; }
+    @media print {
+      .print-bar { display: none; }
+      body { background: #fff; }
+      .page { padding: 0; }
+      .section, .header-card { box-shadow: none; border: 1px solid #e2e8f0; break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Print bar (hidden when printing) -->
+  <div class="print-bar">
+    <a href="/batch/{{ batch.id }}" class="btn btn-secondary">← Kembali ke Detail</a>
+    <div style="font-size:12px;color:#64748b;">Laporan Batch · {{ now.strftime('%d %B %Y') }}</div>
+    <button onclick="window.print()" class="btn btn-primary">🖨️ Cetak / Simpan PDF</button>
+  </div>
+
+  <!-- Header -->
+  {% set sl = status_label.get(batch.status, ('⚪','Unknown')) %}
+  <div class="header-card">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;">
+      <div>
+        <div class="batch-code">{{ batch.kode }}</div>
+        {% if batch.nama %}<div style="font-size:14px;color:#374151;margin-top:2px;">{{ batch.nama }}</div>{% endif %}
+        <div class="batch-meta">📅 Mulai: {{ batch.tanggal_mulai }}</div>
+      </div>
+      <div style="text-align:right;">
+        <span class="badge badge-{% if batch.status=='panen' %}green{% elif batch.status=='inkubasi' %}purple{% elif batch.status=='selesai' %}gray{% else %}yellow{% endif %}" style="font-size:13px;padding:5px 14px;">
+          {{ sl[0] }} {{ sl[1] }}
+        </span>
+        {% if batch.catatan %}
+        <div style="font-size:11px;color:#94a3b8;margin-top:6px;max-width:200px;">{{ batch.catatan }}</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Ringkasan Stats -->
+  <div class="stats-grid">
+    <div class="stat-box">
+      <div class="stat-label">Total Baglog</div>
+      <div class="stat-val">{{ analisis.jumlah_baglog }}</div>
+      <div class="stat-sub">{{ pengisian_list|length }} sesi logging</div>
+    </div>
+    <div class="stat-box" style="border-color:#fecaca;">
+      <div class="stat-label" style="color:#991b1b;">Disterilkan</div>
+      <div class="stat-val" style="color:#991b1b;">{{ sterilisasi_list|sum(attribute='jumlah_baglog') }}</div>
+      <div class="stat-sub">{{ sterilisasi_list|length }} sesi steril</div>
+    </div>
+    <div class="stat-box" style="border-color:#ddd6fe;">
+      <div class="stat-label" style="color:#6b21a8;">Dibibit</div>
+      <div class="stat-val" style="color:#6b21a8;">{{ analisis.total_dibibit }}</div>
+      <div class="stat-sub">{{ inokulasi_list|length }} sesi bibit</div>
+    </div>
+    <div class="stat-box" style="border-color:#bfdbfe;">
+      <div class="stat-label" style="color:#1d4ed8;">Jual Baglog</div>
+      <div class="stat-val" style="color:#1d4ed8;">{{ analisis.total_baglog_jual }}</div>
+      <div class="stat-sub">ke mitra</div>
+    </div>
+    <div class="stat-box" style="border-color:#86efac;">
+      <div class="stat-label" style="color:#15803d;">Total Panen</div>
+      <div class="stat-val" style="color:#15803d;">{{ "%.1f"|format(analisis.total_panen_kg) }}</div>
+      <div class="stat-sub">kg jamur terjual</div>
+    </div>
+    <div class="stat-box" style="border-color:#86efac;">
+      <div class="stat-label" style="color:#15803d;">Produktivitas</div>
+      <div class="stat-val" style="color:#15803d;font-size:18px;">{{ "%.3f"|format(analisis.panen_per_baglog) }}</div>
+      <div class="stat-sub">kg / baglog</div>
+    </div>
+  </div>
+
+  <!-- Logging / Pengisian Baglog -->
+  {% if pengisian_list %}
+  <div class="section">
+    <div class="section-title">📦 Logging Baglog</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Tanggal</th>
+          <th class="r">Jumlah Baglog</th>
+          <th class="r">Plastik (kg)</th>
+          <th class="r">Cincin (pcs)</th>
+          <th class="r">Tutup (pcs)</th>
+          <th>Operator</th>
+          <th>Catatan</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in pengisian_list %}
+        <tr>
+          <td>{{ p.tanggal }}</td>
+          <td class="r" style="font-weight:700;color:#1d4ed8;">{{ p.jumlah_baglog }}</td>
+          <td class="r">{{ p.plastik_pcs or '—' }}</td>
+          <td class="r">{{ p.cincin_pcs or '—' }}</td>
+          <td class="r">{{ p.tutup_pcs or '—' }}</td>
+          <td>{{ p.operator or '—' }}</td>
+          <td style="color:#94a3b8;">{{ p.catatan or '—' }}</td>
+        </tr>
+        {% endfor %}
+        <tr class="total-row">
+          <td>Total</td>
+          <td class="r">{{ pengisian_list|sum(attribute='jumlah_baglog') }} baglog</td>
+          <td class="r">{{ pengisian_list|sum(attribute='plastik_pcs') }}</td>
+          <td class="r">{{ pengisian_list|sum(attribute='cincin_pcs') }}</td>
+          <td class="r">{{ pengisian_list|sum(attribute='tutup_pcs') }}</td>
+          <td colspan="2"></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  <!-- Sterilisasi -->
+  {% if sterilisasi_list %}
+  <div class="section">
+    <div class="section-title">🔥 Sterilisasi</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Kode</th>
+          <th>Tanggal</th>
+          <th class="r">Baglog</th>
+          <th class="r">Kayu (kg)</th>
+          <th class="r">Durasi (jam)</th>
+          <th class="r">Suhu</th>
+          <th class="r">Biaya</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in sterilisasi_list %}
+        <tr>
+          <td>
+            {% if s.kode_steril %}<span class="kode-badge">{{ s.kode_steril }}</span>{% else %}<span style="color:#cbd5e1;">—</span>{% endif %}
+          </td>
+          <td>{{ s.tanggal }}</td>
+          <td class="r" style="font-weight:700;color:#991b1b;">{{ s.jumlah_baglog }}</td>
+          <td class="r">{{ s.kayu_bakar_kg or '—' }}{% if s.kayu_bakar_kg %} kg{% endif %}</td>
+          <td class="r">{{ s.durasi_jam or '—' }}{% if s.durasi_jam %} jam{% endif %}</td>
+          <td class="r">{{ s.suhu or '—' }}{% if s.suhu %}°C{% endif %}</td>
+          <td class="r">{% if s.biaya_bahan_bakar %}Rp {{ "{:,.0f}".format(s.biaya_bahan_bakar) }}{% else %}—{% endif %}</td>
+        </tr>
+        {% endfor %}
+        <tr class="total-row">
+          <td colspan="2">Total</td>
+          <td class="r">{{ sterilisasi_list|sum(attribute='jumlah_baglog') }}</td>
+          <td class="r">{{ "%.1f"|format(sterilisasi_list|sum(attribute='kayu_bakar_kg')) }} kg</td>
+          <td class="r">{{ "%.1f"|format(sterilisasi_list|sum(attribute='durasi_jam')) }} jam</td>
+          <td></td>
+          <td class="r">Rp {{ "{:,.0f}".format(sterilisasi_list|sum(attribute='biaya_bahan_bakar')) }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  <!-- Pembibitan -->
+  {% if inokulasi_list %}
+  <div class="section">
+    <div class="section-title">🧫 Pembibitan / Inokulasi</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Tanggal</th>
+          <th class="r">Jumlah Baglog</th>
+          <th>Jenis Bibit</th>
+          <th>Kode Bibit</th>
+          <th class="r">Botol Bibit</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in inokulasi_list %}
+        <tr>
+          <td>{{ p.tanggal }}</td>
+          <td class="r" style="font-weight:700;color:#6b21a8;">{{ p.jumlah_baglog }}</td>
+          <td>{{ p.jenis_bibit or '—' }}</td>
+          <td>{% if p.kode_bibit %}<span class="kode-badge" style="background:#f3e8ff;color:#6b21a8;">{{ p.kode_bibit }}</span>{% else %}—{% endif %}</td>
+          <td class="r">{{ p.bibit_botol or '—' }}</td>
+        </tr>
+        {% endfor %}
+        <tr class="total-row">
+          <td>Total</td>
+          <td class="r">{{ inokulasi_list|sum(attribute='jumlah_baglog') }}</td>
+          <td colspan="2"></td>
+          <td class="r">{{ "%.1f"|format(inokulasi_list|sum(attribute='bibit_botol')) }} botol</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  <!-- Inkubasi -->
+  {% if inkubasi %}
+  <div class="section">
+    <div class="section-title">⏳ Inkubasi</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;">
+      <div class="summary-row" style="flex-direction:column;gap:2px;border:none;padding:0;">
+        <div class="lbl">Tanggal Mulai</div>
+        <div class="val">{{ inkubasi.tanggal_mulai }}</div>
+      </div>
+      <div class="summary-row" style="flex-direction:column;gap:2px;border:none;padding:0;">
+        <div class="lbl">Tanggal Selesai</div>
+        <div class="val">{{ inkubasi.tanggal_selesai or 'Belum selesai' }}</div>
+      </div>
+      <div class="summary-row" style="flex-direction:column;gap:2px;border:none;padding:0;">
+        <div class="lbl">Baglog Masuk</div>
+        <div class="val">{{ inkubasi.jumlah_baglog }}</div>
+      </div>
+      <div class="summary-row" style="flex-direction:column;gap:2px;border:none;padding:0;">
+        <div class="lbl">Baglog Gagal</div>
+        <div class="val" style="color:#dc2626;">{{ inkubasi.baglog_gagal }}</div>
+      </div>
+      <div class="summary-row" style="flex-direction:column;gap:2px;border:none;padding:0;">
+        <div class="lbl">Keberhasilan</div>
+        <div class="val" style="color:#15803d;font-size:18px;">{{ inkubasi.persentase_keberhasilan }}%</div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Penjualan Baglog ke Mitra -->
+  {% if jual_baglog %}
+  <div class="section">
+    <div class="section-title">🌿 Penjualan Baglog ke Mitra</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Tanggal</th>
+          <th>Pembeli</th>
+          <th class="r">Qty</th>
+          <th class="r">Harga/baglog</th>
+          <th class="r">Total</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for j in jual_baglog %}
+        <tr>
+          <td>{{ j.tanggal }}</td>
+          <td>{{ j.nama_pembeli or '—' }}</td>
+          <td class="r" style="font-weight:700;color:#1d4ed8;">{{ j.jumlah_baglog }}</td>
+          <td class="r">Rp {{ "{:,.0f}".format(j.harga_per_baglog) }}</td>
+          <td class="r" style="font-weight:700;color:#15803d;">Rp {{ "{:,.0f}".format(j.total) }}</td>
+          <td><span class="badge badge-{% if j.status_bayar=='lunas' %}green{% else %}yellow{% endif %}">{{ j.status_bayar }}</span></td>
+        </tr>
+        {% endfor %}
+        <tr class="total-row">
+          <td colspan="2">Total</td>
+          <td class="r">{{ jual_baglog|sum(attribute='jumlah_baglog') }} baglog</td>
+          <td></td>
+          <td class="r">Rp {{ "{:,.0f}".format(jual_baglog|sum(attribute='total')) }}</td>
+          <td></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  <!-- Panen (ringkasan) -->
+  {% if analisis.total_panen_kg > 0 %}
+  <div class="section">
+    <div class="section-title">🍄 Ringkasan Panen Jamur</div>
+    <div class="two-col">
+      <div>
+        <div class="summary-row"><span class="lbl">Total Panen Terjual</span><span class="val" style="color:#15803d;">{{ "%.1f"|format(analisis.total_panen_kg) }} kg</span></div>
+        <div class="summary-row"><span class="lbl">Produktivitas</span><span class="val">{{ "%.3f"|format(analisis.panen_per_baglog) }} kg/baglog</span></div>
+      </div>
+      <div>
+        <div class="summary-row"><span class="lbl">Total Pendapatan Jamur</span><span class="val" style="color:#15803d;">Rp {{ "{:,.0f}".format(analisis.total_omzet) }}</span></div>
+        <div class="summary-row"><span class="lbl">Baglog di Kumbung</span><span class="val">{{ analisis.baglog_kumbung }}</span></div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Ringkasan Keuangan -->
+  {% set biaya_steril = sterilisasi_list|sum(attribute='biaya_bahan_bakar') %}
+  {% set total_pendapatan = analisis.total_omzet + analisis.total_jual_baglog %}
+  {% set laba = total_pendapatan - analisis.total_biaya %}
+  {% set laba_abs = laba if laba >= 0 else laba * -1 %}
+  <div class="section">
+    <div class="section-title">💰 Ringkasan Keuangan Batch</div>
+
+    <div style="margin-bottom:14px;">
+      <div class="summary-row"><span class="lbl">Pendapatan Jamur</span><span class="val" style="color:#15803d;">Rp {{ "{:,.0f}".format(analisis.total_omzet) }}</span></div>
+      <div class="summary-row"><span class="lbl">Pendapatan Jual Baglog</span><span class="val" style="color:#15803d;">Rp {{ "{:,.0f}".format(analisis.total_jual_baglog) }}</span></div>
+      <div class="summary-row" style="padding:10px 0;"><span style="font-weight:700;">Total Pendapatan</span><span style="font-weight:800;color:#15803d;font-size:16px;">Rp {{ "{:,.0f}".format(total_pendapatan) }}</span></div>
+      <div class="summary-row"><span class="lbl">Biaya Sterilisasi</span><span class="val" style="color:#dc2626;">Rp {{ "{:,.0f}".format(biaya_steril) }}</span></div>
+      <div class="summary-row"><span class="lbl">Total Biaya</span><span class="val" style="color:#dc2626;font-size:16px;font-weight:800;">Rp {{ "{:,.0f}".format(analisis.total_biaya) }}</span></div>
+    </div>
+
+    <div class="two-col">
+      <div class="fin-box {% if laba >= 0 %}green{% else %}red{% endif %}">
+        <div class="fin-label">{% if laba >= 0 %}Laba Bersih Estimasi{% else %}Rugi Estimasi{% endif %}</div>
+        <div class="fin-val {% if laba >= 0 %}green{% else %}red{% endif %}">Rp {{ "{:,.0f}".format(laba_abs) }}</div>
+      </div>
+      {% if analisis.total_biaya > 0 and total_pendapatan > 0 %}
+      {% set roi = laba / analisis.total_biaya * 100 %}
+      <div class="fin-box" style="background:#f8fafc;border:1.5px solid #e2e8f0;">
+        <div class="fin-label">ROI Estimasi</div>
+        <div class="fin-val" style="color:#1d4ed8;font-size:18px;">{{ "%.1f"|format(roi) }}%</div>
+      </div>
+      {% endif %}
+    </div>
+
+    <div style="margin-top:12px;font-size:11px;color:#94a3b8;">
+      * Estimasi. Biaya bahan baku, tenaga kerja, dan operasional lainnya perlu dimasukkan secara manual di menu Pengeluaran untuk perhitungan akurat.
+    </div>
+  </div>
+
+  <div style="text-align:center;font-size:11px;color:#94a3b8;padding:16px 0;border-top:1px solid #e2e8f0;margin-top:8px;">
+    Laporan Batch {{ batch.kode }} · Dicetak {{ now.strftime('%d %B %Y %H:%M') }} · Jamur Tiram
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% set active = "permissions" %}
+{% block title %}Hak Akses Pekerja — Jamur Tiram{% endblock %}
+{% block topbar_title %}Hak Akses Pekerja{% endblock %}
+
+{% block content %}
+<div style="max-width:560px;">
+
+  {% if request.query_params.get('ok') %}
+  <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#15803d;font-weight:600;">
+    ✅ Hak akses berhasil disimpan
+  </div>
+  {% endif %}
+
+  <div class="card">
+    <div style="margin-bottom:18px;">
+      <div style="font-size:15px;font-weight:800;color:#1B5E20;margin-bottom:4px;">🔐 Hak Akses Pekerja</div>
+      <div style="font-size:12px;color:#64748b;">Centang fitur yang boleh diakses oleh akun dengan role <strong>Pekerja</strong>. Admin dan Owner selalu punya akses penuh.</div>
+    </div>
+
+    <form method="post" action="/admin/permissions">
+      <div style="display:flex;flex-direction:column;gap:0;">
+        {% for key, label in menu_defs %}
+        {% set checked = key in perms %}
+        <label style="display:flex;align-items:center;gap:12px;padding:13px 14px;border-radius:10px;cursor:pointer;transition:background .1s;
+          background:{% if checked %}#f0fdf4{% else %}#f9fafb{% endif %};
+          border:1.5px solid {% if checked %}#86efac{% else %}#e5e7eb{% endif %};
+          margin-bottom:8px;"
+          onmouseenter="this.style.background='{% if checked %}#dcfce7{% else %}#f3f4f6{% endif %}'"
+          onmouseleave="this.style.background='{% if checked %}#f0fdf4{% else %}#f9fafb{% endif %}'">
+          <input type="checkbox" name="perm" value="{{ key }}"
+            {% if checked %}checked{% endif %}
+            style="width:18px;height:18px;accent-color:#2E7D32;cursor:pointer;flex-shrink:0;"
+            onchange="updateStyle(this)">
+          <div>
+            <div style="font-size:13px;font-weight:{% if checked %}700{% else %}500{% endif %};color:{% if checked %}#15803d{% else %}#374151{% endif %};">
+              {{ label }}
+            </div>
+          </div>
+          {% if checked %}
+          <span style="margin-left:auto;font-size:10px;font-weight:700;background:#dcfce7;color:#15803d;padding:2px 8px;border-radius:20px;">Aktif</span>
+          {% else %}
+          <span style="margin-left:auto;font-size:10px;color:#94a3b8;padding:2px 8px;">—</span>
+          {% endif %}
+        </label>
+        {% endfor %}
+      </div>
+
+      <div style="margin-top:6px;padding-top:16px;border-top:1px solid #f1f5f9;display:flex;gap:10px;align-items:center;">
+        <button type="submit" class="btn-primary" style="padding:10px 24px;">Simpan Perubahan</button>
+        <span style="font-size:12px;color:#94a3b8;">Perubahan langsung berlaku saat login berikutnya</span>
+      </div>
+    </form>
+  </div>
+
+  <!-- Info box -->
+  <div style="margin-top:16px;background:#fefce8;border:1.5px solid #fde68a;border-radius:10px;padding:14px 16px;font-size:12px;color:#713f12;">
+    <div style="font-weight:700;margin-bottom:6px;">ℹ️ Yang selalu bisa diakses Pekerja (tidak perlu dicentang):</div>
+    <ul style="margin:0;padding-left:18px;line-height:1.8;">
+      <li>Dashboard</li>
+      <li>Batch Produksi — lihat daftar & detail</li>
+      <li>Input proses: Pengadukan, Pengisian, Sterilisasi, Inokulasi, Inkubasi</li>
+      <li>Tambah Panen</li>
+      <li>Lihat Stok Bahan (view only)</li>
+    </ul>
+  </div>
+
+</div>
+
+<script>
+function updateStyle(cb) {
+  const label = cb.closest('label');
+  const txt = label.querySelector('div > div');
+  const badge = label.querySelector('span');
+  if (cb.checked) {
+    label.style.background = '#f0fdf4';
+    label.style.border = '1.5px solid #86efac';
+    txt.style.fontWeight = '700';
+    txt.style.color = '#15803d';
+    badge.textContent = 'Aktif';
+    badge.style.background = '#dcfce7';
+    badge.style.color = '#15803d';
+  } else {
+    label.style.background = '#f9fafb';
+    label.style.border = '1.5px solid #e5e7eb';
+    txt.style.fontWeight = '500';
+    txt.style.color = '#374151';
+    badge.textContent = '—';
+    badge.style.background = 'transparent';
+    badge.style.color = '#94a3b8';
+  }
+}
+</script>
+{% endblock %}
