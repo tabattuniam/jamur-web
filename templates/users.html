@@ -15,6 +15,7 @@
         <th style="text-align:left;padding:10px 8px;color:#64748b;">Nama</th>
         <th style="text-align:left;padding:10px 8px;color:#64748b;">Username</th>
         <th style="text-align:left;padding:10px 8px;color:#64748b;">Role</th>
+        <th style="text-align:left;padding:10px 8px;color:#64748b;">No. WA</th>
         <th></th>
       </tr>
     </thead>
@@ -24,13 +25,14 @@
         <td style="padding:10px 8px;font-weight:600;">{{ u.nama }}</td>
         <td style="padding:10px 8px;font-family:monospace;color:#64748b;">{{ u.username }}</td>
         <td style="padding:10px 8px;">
-          <span class="badge {% if u.role=='admin' %}badge-red{% elif u.role=='owner' %}badge-blue{% else %}badge-green{% endif %}">
-            {% if u.role == 'operator' %}Pekerja{% else %}{{ u.role|capitalize }}{% endif %}
+          <span class="badge {% if u.role=='admin' %}badge-red{% elif u.role=='owner' %}badge-blue{% elif u.role=='ketua_tim' %}badge-purple{% else %}badge-green{% endif %}">
+            {% if u.role == 'operator' %}Pekerja{% elif u.role == 'ketua_tim' %}Ketua Tim{% else %}{{ u.role|capitalize }}{% endif %}
           </span>
         </td>
+        <td style="padding:10px 8px;font-size:11px;color:#64748b;">{{ u.nomor_wa or '—' }}</td>
         <td style="padding:10px 8px;text-align:right;">
           <button onclick="openEdit(this)"
-            data-id="{{ u.id }}" data-nama="{{ u.nama|e }}" data-role="{{ u.role }}"
+            data-id="{{ u.id }}" data-nama="{{ u.nama|e }}" data-role="{{ u.role }}" data-wa="{{ u.nomor_wa or '' }}"
             class="btn-secondary" style="font-size:11px;padding:4px 10px;margin-right:4px;">Edit</button>
           <form method="post" action="/users/{{ u.id }}/hapus" style="display:inline;" onsubmit="return confirm('Hapus pengguna {{ u.nama }}?')">
             <button class="btn-danger" style="font-size:11px;padding:4px 10px;">Hapus</button>
@@ -58,10 +60,12 @@
           <label class="form-label">Role</label>
           <select name="role" class="form-input">
             <option value="operator">Pekerja</option>
+            <option value="ketua_tim">Ketua Tim</option>
             <option value="owner">Owner</option>
             <option value="admin">Admin</option>
           </select>
         </div>
+        <div><label class="form-label">No. WhatsApp (untuk reminder)</label><input name="nomor_wa" class="form-input" placeholder="628xxxxxxxxxx"></div>
       </div>
       <div style="display:flex;gap:8px;margin-top:18px;">
         <button type="button" onclick="document.getElementById('modal-tambah').classList.add('hidden')" class="btn-secondary" style="flex:1;justify-content:center;">Batal</button>
@@ -85,10 +89,12 @@
           <label class="form-label">Role</label>
           <select id="e-role" name="role" class="form-input">
             <option value="operator">Pekerja</option>
+            <option value="ketua_tim">Ketua Tim</option>
             <option value="owner">Owner</option>
             <option value="admin">Admin</option>
           </select>
         </div>
+        <div><label class="form-label">No. WhatsApp (untuk reminder)</label><input id="e-wa" name="nomor_wa" class="form-input" placeholder="628xxxxxxxxxx"></div>
         <div><label class="form-label">Password Baru (kosongkan jika tidak diubah)</label><input name="password" type="password" class="form-input"></div>
       </div>
       <div style="display:flex;gap:8px;margin-top:18px;">
@@ -107,6 +113,7 @@ function openEdit(btn) {
   document.getElementById('form-edit').action = '/users/' + d.id + '/edit';
   document.getElementById('e-nama').value = d.nama;
   document.getElementById('e-role').value = d.role;
+  document.getElementById('e-wa').value = d.wa || '';
   document.getElementById('modal-edit').classList.remove('hidden');
 }
 </script>

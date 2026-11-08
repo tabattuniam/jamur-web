@@ -92,7 +92,7 @@
           </td>
           <td style="padding:8px;">
             <div style="display:flex;gap:4px;">
-              <button class="btn-secondary" style="padding:4px 8px;font-size:11px;"
+              <button class="btn-secondary" style="padding:4px 8px;font-size:11px;" title="Edit penjualan"
                 onclick="bukaEdit({
                   id:{{ p.id }},
                   tanggal:'{{ p.tanggal }}',
@@ -109,7 +109,7 @@
                   batch_id:'{{ p.batch_id or '' }}'
                 })">✏️</button>
               <form method="post" action="/penjualan/{{ p.id }}/hapus" onsubmit="return confirm('Hapus transaksi ini?')">
-                <button class="btn-danger" style="padding:4px 8px;font-size:11px;">🗑</button>
+                <button class="btn-danger" style="padding:4px 8px;font-size:11px;" title="Hapus transaksi">🗑</button>
               </form>
             </div>
           </td>
@@ -139,7 +139,7 @@
       <h3 style="font-size:15px;font-weight:700;color:#1B5E20;">🍄 Catat Penjualan Jamur</h3>
       <button onclick="document.getElementById('modal-tambah').style.display='none'" style="background:none;border:none;font-size:20px;cursor:pointer;color:#94a3b8;">✕</button>
     </div>
-    <form method="post" action="/penjualan/tambah">
+    <form method="post" action="/penjualan/tambah" onsubmit="return validasiTambah()" novalidate>
       <div style="display:grid;gap:10px;">
 
         <!-- Tipe penjualan -->
@@ -168,11 +168,11 @@
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
             <div>
               <label class="form-label">Berat (kg) *</label>
-              <input id="inp-berat" name="berat_kg" type="number" step="0.01" class="form-input" required min="0.01" oninput="hitungTotal()">
+              <input id="inp-berat" name="berat_kg" type="number" step="0.01" class="form-input" placeholder="Contoh: 2.5" oninput="hitungTotal()">
             </div>
             <div>
               <label class="form-label">Harga/kg (Rp) *</label>
-              <input id="inp-harga-kg" name="harga_per_kg" type="number" class="form-input" required min="1" oninput="hitungTotal()">
+              <input id="inp-harga-kg" name="harga_per_kg" type="number" class="form-input" placeholder="Contoh: 15000" oninput="hitungTotal()">
             </div>
           </div>
         </div>
@@ -222,7 +222,7 @@
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
           <div>
             <label class="form-label">Nama Pembeli</label>
-            <input name="nama_pembeli" class="form-input" placeholder="Opsional">
+            <input name="nama_pembeli" class="form-input" placeholder="Opsional" list="daftar-pembeli" autocomplete="off">
           </div>
           <div>
             <label class="form-label">No. HP</label>
@@ -264,7 +264,7 @@
       <h3 style="font-size:15px;font-weight:700;color:#1B5E20;">✏️ Edit Penjualan</h3>
       <button onclick="document.getElementById('modal-edit').style.display='none'" style="background:none;border:none;font-size:20px;cursor:pointer;color:#94a3b8;">✕</button>
     </div>
-    <form method="post" id="form-edit" action="" onsubmit="try { return validasiEdit() } catch(e) { console.error('[FORM EDIT ERROR]', e); alert('JS error: '+e.message+'\\n\\nForm tetap akan disubmit.'); return true; }">
+    <form method="post" id="form-edit" action="" onsubmit="try { return validasiEdit() } catch(e) { console.error('[FORM EDIT ERROR]', e); alert('JS error: '+e.message+'\\n\\nForm tetap akan disubmit.'); return true; }" novalidate>
       <div style="display:grid;gap:10px;">
         <div>
           <label class="form-label">Tipe Penjualan *</label>
@@ -326,7 +326,7 @@
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
           <div>
             <label class="form-label">Nama Pembeli</label>
-            <input id="einp-nama" name="nama_pembeli" class="form-input" placeholder="Opsional">
+            <input id="einp-nama" name="nama_pembeli" class="form-input" placeholder="Opsional" list="daftar-pembeli" autocomplete="off">
           </div>
           <div>
             <label class="form-label">No. HP</label>
@@ -361,6 +361,13 @@
     </form>
   </div>
 </div>
+<!-- Datalist nama pembeli -->
+<datalist id="daftar-pembeli">
+  {% for nama in nama_pembeli_list %}
+  <option value="{{ nama|e }}">
+  {% endfor %}
+</datalist>
+
 {% endblock %}
 
 {% block scripts %}
@@ -417,45 +424,27 @@ function hitungTotal() {
   document.getElementById('total-preview').textContent = 'Rp ' + (kg * harga).toLocaleString('id');
 }
 
+function parseNum(val) {
+  return parseFloat(String(val).replace(',', '.')) || 0;
+}
+
 function validasiTambah() {
-  // DEBUG indicator — kalau Pak Tebe lihat ini, JS jalan
-  console.log('[validasiTambah] called');
-  const checked = document.querySelector('#modal-tambah input[name="tipe_jual"]:checked');
-  if (!checked) {
-    alert('🐛 DEBUG: Tidak ada radio tipe_jual yang ter-check. Pilih Per Timbang atau Per Bungkus.');
-    return false;
-  }
-  const tipe = checked.value;
-  console.log('[validasiTambah] tipe =', tipe);
+  const tipe = tipeAktif;
   if (tipe === 'timbang') {
     const beratEl = document.getElementById('inp-berat');
     const hargaEl = document.getElementById('inp-harga-kg');
-    const berat = parseFloat(beratEl.value);
-    const harga = parseFloat(hargaEl.value);
-    console.log('[validasiTambah] timbang: berat=', berat, 'harga=', harga);
-    if (!berat || berat <= 0) { 
-      alert('⚠️ Berat (kg) harus diisi dan lebih dari 0'); 
-      beratEl.focus(); 
-      return false; 
-    }
-    if (!harga || harga <= 0) { 
-      alert('⚠️ Harga/kg harus diisi dan lebih dari 0'); 
-      hargaEl.focus(); 
-      return false; 
-    }
+    const berat = parseNum(beratEl.value);
+    const harga = parseNum(hargaEl.value);
+    // Normalisasi koma → titik sebelum submit
+    beratEl.value = berat;
+    hargaEl.value = harga;
+    if (berat <= 0) { alert('⚠️ Berat (kg) harus diisi dan lebih dari 0'); beratEl.focus(); return false; }
+    if (harga <= 0) { alert('⚠️ Harga/kg harus diisi dan lebih dari 0'); hargaEl.focus(); return false; }
   } else {
-    if (!paketAktif) { 
-      alert('⚠️ Pilih jenis paket (Rp 4.500 atau Rp 5.000)'); 
-      return false; 
-    }
+    if (!paketAktif) { alert('⚠️ Pilih jenis paket (Rp 4.500 atau Rp 5.000)'); return false; }
     const jml = parseInt(document.getElementById('inp-bungkus').value) || 0;
-    if (jml <= 0) { 
-      alert('⚠️ Jumlah bungkus harus minimal 1'); 
-      document.getElementById('inp-bungkus').focus(); 
-      return false; 
-    }
+    if (jml <= 0) { alert('⚠️ Jumlah bungkus harus minimal 1'); document.getElementById('inp-bungkus').focus(); return false; }
   }
-  console.log('[validasiTambah] PASSED, submitting form');
   return true;
 }
 

@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+{% set active = "absensi" %}
+{% block title %}Absensi — Jamur Tiram{% endblock %}
+{% block topbar_title %}Absensi Harian{% endblock %}
+
+{% block content %}
+{% set err = request.query_params.get('err','') %}
+{% set ok = request.query_params.get('ok','') %}
+
+{% if ok == 'masuk' %}
+<div style="background:#dcfce7;border:1px solid #86efac;border-radius:10px;padding:12px 16px;margin-bottom:16px;color:#15803d;font-size:13px;font-weight:600;">
+  ✅ Absen masuk berhasil dicatat.
+</div>
+{% elif ok == 'keluar' %}
+<div style="background:#dcfce7;border:1px solid #86efac;border-radius:10px;padding:12px 16px;margin-bottom:16px;color:#15803d;font-size:13px;font-weight:600;">
+  ✅ Absen keluar berhasil dicatat.
+</div>
+{% elif err == 'sudah_masuk' %}
+<div style="background:#fee2e2;border:1px solid #fca5a5;border-radius:10px;padding:12px 16px;margin-bottom:16px;color:#b91c1c;font-size:13px;font-weight:600;">
+  ⚠️ Kamu sudah absen masuk hari ini.
+</div>
+{% elif err == 'sudah_keluar' %}
+<div style="background:#fee2e2;border:1px solid #fca5a5;border-radius:10px;padding:12px 16px;margin-bottom:16px;color:#b91c1c;font-size:13px;font-weight:600;">
+  ⚠️ Kamu sudah absen keluar hari ini.
+</div>
+{% endif %}
+
+<!-- Status Hari Ini -->
+<div class="card" style="margin-bottom:16px;">
+  <div style="font-size:13px;font-weight:700;color:#1B5E20;margin-bottom:12px;">Status Absen Hari Ini — {{ tanggal }}</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+    <div style="background:{% if absen_masuk %}#dcfce7{% else %}#f8fafc{% endif %};border-radius:10px;padding:14px;text-align:center;border:1.5px solid {% if absen_masuk %}#86efac{% else %}#e2e8f0{% endif %};">
+      <div style="font-size:22px;margin-bottom:4px;">🌅</div>
+      <div style="font-size:12px;font-weight:700;color:#374151;">Masuk</div>
+      {% if absen_masuk %}
+        <div style="font-size:15px;font-weight:800;color:#15803d;">{{ absen_masuk.waktu[:5] }}</div>
+        <div style="font-size:10px;color:#6b7280;margin-top:2px;">✓ Sudah absen</div>
+      {% else %}
+        <div style="font-size:12px;color:#9ca3af;margin-top:4px;">Belum absen</div>
+      {% endif %}
+    </div>
+    <div style="background:{% if absen_keluar %}#dcfce7{% else %}#f8fafc{% endif %};border-radius:10px;padding:14px;text-align:center;border:1.5px solid {% if absen_keluar %}#86efac{% else %}#e2e8f0{% endif %};">
+      <div style="font-size:22px;margin-bottom:4px;">🌇</div>
+      <div style="font-size:12px;font-weight:700;color:#374151;">Pulang</div>
+      {% if absen_keluar %}
+        <div style="font-size:15px;font-weight:800;color:#15803d;">{{ absen_keluar.waktu[:5] }}</div>
+        <div style="font-size:10px;color:#6b7280;margin-top:2px;">✓ Sudah absen</div>
+      {% else %}
+        <div style="font-size:12px;color:#9ca3af;margin-top:4px;">Belum absen</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Form Absen -->
+{% if tanggal == today %}
+  {% if not absen_masuk %}
+  <div class="card" style="margin-bottom:16px;">
+    <div style="font-size:13px;font-weight:700;color:#1B5E20;margin-bottom:14px;">📸 Absen Masuk</div>
+    <form method="post" action="/absen/masuk" enctype="multipart/form-data" id="form-masuk">
+      <input type="hidden" name="latitude" id="lat-masuk">
+      <input type="hidden" name="longitude" id="lon-masuk">
+      <div style="margin-bottom:12px;">
+        <label class="form-label">Foto Selfie *</label>
+        <input type="file" name="foto" accept="image/*" capture="user" required class="form-input" style="padding:6px;">
+      </div>
+      <div style="margin-bottom:14px;">
+        <label class="form-label">Catatan (opsional)</label>
+        <input name="catatan" class="form-input" placeholder="Catatan...">
+      </div>
+      <div id="gps-info-masuk" style="font-size:11px;color:#6b7280;margin-bottom:10px;"></div>
+      <button type="submit" class="btn-primary" style="width:100%;justify-content:center;padding:12px;">
+        ✅ Absen Masuk Sekarang
+      </button>
+    </form>
+  </div>
+  {% endif %}
+
+  {% if absen_masuk and not absen_keluar %}
+  <div class="card" style="margin-bottom:16px;">
+    <div style="font-size:13px;font-weight:700;color:#1B5E20;margin-bottom:14px;">📸 Absen Pulang</div>
+    <form method="post" action="/absen/keluar" enctype="multipart/form-data" id="form-keluar">
+      <input type="hidden" name="latitude" id="lat-keluar">
+      <input type="hidden" name="longitude" id="lon-keluar">
+      <div style="margin-bottom:12px;">
+        <label class="form-label">Foto Selfie *</label>
+        <input type="file" name="foto" accept="image/*" capture="user" required class="form-input" style="padding:6px;">
+      </div>
+      <div style="margin-bottom:14px;">
+        <label class="form-label">Catatan (opsional)</label>
+        <input name="catatan" class="form-input" placeholder="Catatan...">
+      </div>
+      <div id="gps-info-keluar" style="font-size:11px;color:#6b7280;margin-bottom:10px;"></div>
+      <button type="submit" class="btn-primary" style="width:100%;justify-content:center;padding:12px;background:#1565C0;">
+        🏠 Absen Pulang Sekarang
+      </button>
+    </form>
+  </div>
+  {% endif %}
+
+  {% if absen_masuk and absen_keluar %}
+  <div class="card" style="margin-bottom:16px;text-align:center;padding:24px;">
+    <div style="font-size:32px;margin-bottom:8px;">🎉</div>
+    <div style="font-size:14px;font-weight:700;color:#15803d;">Absensi hari ini selesai!</div>
+    <div style="font-size:12px;color:#6b7280;margin-top:4px;">Masuk {{ absen_masuk.waktu[:5] }} — Pulang {{ absen_keluar.waktu[:5] }}</div>
+  </div>
+  {% endif %}
+{% endif %}
+
+<!-- Riwayat -->
+<div class="card">
+  <div style="font-size:13px;font-weight:700;color:#1B5E20;margin-bottom:12px;">Riwayat Absensi</div>
+  {% if riwayat %}
+  <table style="width:100%;border-collapse:collapse;font-size:12px;">
+    <thead>
+      <tr style="border-bottom:1.5px solid #e7f3e8;">
+        <th style="text-align:left;padding:8px 6px;color:#64748b;">Tanggal</th>
+        <th style="text-align:left;padding:8px 6px;color:#64748b;">Tipe</th>
+        <th style="text-align:left;padding:8px 6px;color:#64748b;">Jam</th>
+        <th style="text-align:left;padding:8px 6px;color:#64748b;">Foto</th>
+        <th style="text-align:left;padding:8px 6px;color:#64748b;">Lokasi</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for a in riwayat %}
+      <tr style="border-bottom:1px solid #f0f4f0;">
+        <td style="padding:8px 6px;">{{ a.tanggal }}</td>
+        <td style="padding:8px 6px;">
+          <span class="badge {% if a.tipe=='masuk' %}badge-green{% else %}badge-blue{% endif %}">
+            {{ '🌅 Masuk' if a.tipe=='masuk' else '🌇 Pulang' }}
+          </span>
+        </td>
+        <td style="padding:8px 6px;font-weight:600;">{{ a.waktu[:5] }}</td>
+        <td style="padding:8px 6px;">
+          {% if a.foto_path %}
+          <a href="/photos/{{ a.foto_path }}" target="_blank" title="Klik untuk lihat foto selfie">
+            <img src="/photos/{{ a.foto_path }}" style="width:36px;height:36px;object-fit:cover;border-radius:6px;border:1px solid #e2e8f0;">
+          </a>
+          {% else %}—{% endif %}
+        </td>
+        <td style="padding:8px 6px;font-size:11px;">
+          {% if a.latitude %}
+          <a href="https://maps.google.com/?q={{ a.latitude }},{{ a.longitude }}" target="_blank"
+             title="Buka di Google Maps"
+             style="display:inline-flex;align-items:center;gap:3px;color:#1d4ed8;text-decoration:none;">
+            📍 {{ "%.4f"|format(a.latitude) }}, {{ "%.4f"|format(a.longitude) }}
+          </a>
+          {% else %}<span style="color:#9ca3af;">—</span>{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div style="text-align:center;color:#9ca3af;font-size:13px;padding:20px;">Belum ada riwayat absensi.</div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function getGPS(latId, lonId, infoId) {
+  if (!navigator.geolocation) return;
+  navigator.geolocation.getCurrentPosition(
+    function(pos) {
+      document.getElementById(latId).value = pos.coords.latitude;
+      document.getElementById(lonId).value = pos.coords.longitude;
+      document.getElementById(infoId).textContent = '📍 Lokasi terdeteksi: ' + pos.coords.latitude.toFixed(5) + ', ' + pos.coords.longitude.toFixed(5);
+    },
+    function() {
+      document.getElementById(infoId).textContent = '📍 Lokasi tidak tersedia (diabaikan)';
+    },
+    {timeout: 10000}
+  );
+}
+{% if not absen_masuk %}
+getGPS('lat-masuk','lon-masuk','gps-info-masuk');
+{% endif %}
+{% if absen_masuk and not absen_keluar %}
+getGPS('lat-keluar','lon-keluar','gps-info-keluar');
+{% endif %}
+</script>
+{% endblock %}

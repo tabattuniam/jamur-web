@@ -1,0 +1,274 @@
+{% extends "base.html" %}
+{% set active = "rencana_jual" %}
+{% block title %}Rencana Jual Jamur{% endblock %}
+{% block topbar_title %}Rencana Jual Jamur Mingguan{% endblock %}
+
+{% block content %}
+<div style="max-width:900px;">
+
+  <!-- Navigasi Minggu -->
+  <div class="card" style="margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+    <a href="/rencana-jual?minggu={{ prev_minggu }}" class="btn-secondary">
+      <svg style="width:15px;height:15px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/></svg>
+      Minggu Lalu
+    </a>
+    <div style="text-align:center;">
+      <div style="font-size:15px;font-weight:700;color:#1B5E20;">
+        {{ tanggal_mulai|replace('-', '/') }} — {{ tanggal_akhir|replace('-', '/') }}
+      </div>
+      <div style="font-size:11px;color:#64748b;margin-top:2px;">Senin – Minggu</div>
+    </div>
+    <a href="/rencana-jual?minggu={{ next_minggu }}" class="btn-secondary">
+      Minggu Depan
+      <svg style="width:15px;height:15px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
+    </a>
+  </div>
+
+  <!-- Kartu per Hari -->
+  {% for hari in hari_list %}
+  <div class="card" style="margin-bottom:14px;">
+    <!-- Header Hari -->
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div style="background:#1B5E20;color:#fff;font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;">
+          {{ hari.nama }}
+        </div>
+        <div style="font-size:13px;color:#475569;font-weight:500;">{{ hari.tanggal }}</div>
+      </div>
+      <button onclick="bukaModalTambah('{{ hari.tanggal }}')" class="btn-primary" style="font-size:12px;padding:6px 12px;">
+        <svg style="width:13px;height:13px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+        Tambah Rencana
+      </button>
+    </div>
+
+    <!-- Pola Historis -->
+    {% if hari.pola %}
+    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 12px;margin-bottom:10px;">
+      <div style="font-size:11px;font-weight:700;color:#15803d;margin-bottom:6px;">Pola Historis {{ hari.nama }}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;">
+        {% for p in hari.pola %}
+        <div style="background:#fff;border:1px solid #d1fae5;border-radius:8px;padding:5px 10px;font-size:12px;color:#1e293b;display:flex;align-items:center;gap:6px;">
+          <span style="font-weight:600;">{{ p.nama_pembeli }}</span>
+          <span style="color:#64748b;">{{ p.frekuensi }}x beli</span>
+          {% set hp = nomor_hp_map.get(p.nama_pembeli, '') %}
+          {% if hp %}
+          <a href="https://wa.me/{{ hp|replace('+','') }}" target="_blank"
+             style="display:inline-flex;align-items:center;gap:3px;background:#dcfce7;color:#15803d;border-radius:6px;padding:2px 7px;font-size:11px;font-weight:600;text-decoration:none;">
+            <svg style="width:11px;height:11px;" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+            {{ hp }}
+          </a>
+          {% endif %}
+          <button onclick="isiFormTambah('{{ hari.tanggal }}','{{ p.nama_pembeli }}','{{ nomor_hp_map.get(p.nama_pembeli, '') }}','')"
+                  style="background:#e0f2fe;color:#0369a1;border:none;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:600;cursor:pointer;"
+                  title="Isi form dengan data ini">
+            Pakai
+          </button>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Daftar Rencana -->
+    {% if hari.rencana %}
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      {% for r in hari.rencana %}
+      <div style="border:1px solid {% if r.status == 'terealisasi' %}#bbf7d0{% elif r.status == 'batal' %}#fecaca{% else %}#e2e8f0{% endif %};border-radius:10px;padding:10px 14px;background:{% if r.status == 'terealisasi' %}#f0fdf4{% elif r.status == 'batal' %}#fef2f2{% else %}#fff{% endif %};">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+          <div style="flex:1;min-width:0;">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+              <span style="font-size:14px;font-weight:700;color:#1e293b;">{{ r.nama_pembeli or '—' }}</span>
+              {% if r.status == 'terealisasi' %}
+              <span class="badge badge-green">Terealisasi</span>
+              {% elif r.status == 'batal' %}
+              <span class="badge badge-red">Batal</span>
+              {% else %}
+              <span class="badge badge-yellow">Rencana</span>
+              {% endif %}
+            </div>
+            <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:4px;">
+              <span style="font-size:12px;color:#64748b;">Target: <b style="color:#1e293b;">{{ r.target_kg }} kg</b></span>
+              {% if r.harga_per_kg %}
+              <span style="font-size:12px;color:#64748b;">Harga: <b style="color:#1e293b;">{{ r.harga_per_kg|rp }}/kg</b></span>
+              {% endif %}
+              {% if r.nomor_hp %}
+              <a href="https://wa.me/{{ r.nomor_hp|replace('+','') }}" target="_blank"
+                 style="display:inline-flex;align-items:center;gap:3px;color:#15803d;font-size:12px;font-weight:600;text-decoration:none;">
+                <svg style="width:12px;height:12px;" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                {{ r.nomor_hp }}
+              </a>
+              {% endif %}
+              {% if r.catatan %}
+              <span style="font-size:12px;color:#94a3b8;font-style:italic;">{{ r.catatan }}</span>
+              {% endif %}
+            </div>
+            {% if r.status == 'terealisasi' and r.berat_realisasi %}
+            <div style="margin-top:4px;font-size:12px;color:#15803d;font-weight:600;">
+              Realisasi: {{ r.berat_realisasi }} kg × {{ r.harga_realisasi|rp }} = {{ (r.berat_realisasi * r.harga_realisasi)|int|rp }}
+              <span class="badge badge-{% if r.status_bayar_realisasi == 'lunas' %}green{% else %}yellow{% endif %}" style="margin-left:4px;">{{ r.status_bayar_realisasi|capitalize }}</span>
+            </div>
+            {% endif %}
+          </div>
+          <div style="display:flex;gap:6px;flex-shrink:0;">
+            {% if r.status == 'rencana' %}
+            <button onclick="bukaModalRealisasi({{ r.id }}, '{{ r.tanggal }}', '{{ r.nama_pembeli }}', '{{ r.nomor_hp }}', {{ r.target_kg }}, {{ r.harga_per_kg or 0 }})"
+                    class="btn-primary" style="font-size:11px;padding:5px 10px;">
+              Realisasi
+            </button>
+            <form method="post" action="/rencana-jual/{{ r.id }}/batal" style="display:inline;">
+              <input type="hidden" name="tanggal" value="{{ r.tanggal }}">
+              <button type="submit" class="btn-secondary" style="font-size:11px;padding:5px 10px;">Batal</button>
+            </form>
+            {% endif %}
+            <form method="post" action="/rencana-jual/{{ r.id }}/hapus" style="display:inline;"
+                  onsubmit="return confirm('Hapus rencana ini?')">
+              <input type="hidden" name="tanggal" value="{{ r.tanggal }}">
+              <button type="submit" class="btn-danger" style="font-size:11px;padding:5px 10px;">Hapus</button>
+            </form>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div style="text-align:center;padding:12px 0;color:#94a3b8;font-size:13px;">Belum ada rencana untuk hari ini</div>
+    {% endif %}
+  </div>
+  {% endfor %}
+
+</div>
+
+<!-- Modal Tambah Rencana -->
+<div id="modal-tambah" class="modal-overlay" style="display:none;" onclick="if(event.target===this)tutupModalTambah()">
+  <div style="background:#fff;border-radius:16px;padding:24px;width:100%;max-width:420px;">
+    <h3 style="font-size:15px;font-weight:700;color:#1B5E20;margin-bottom:16px;">Tambah Rencana Jual</h3>
+    <form method="post" action="/rencana-jual/tambah">
+      <input type="hidden" name="tanggal" id="f-tanggal">
+
+      <div style="margin-bottom:12px;">
+        <label class="form-label">Hari / Tanggal</label>
+        <input type="text" id="f-tanggal-display" class="form-input" readonly style="background:#f8fafc;color:#475569;">
+      </div>
+
+      <div style="margin-bottom:12px;">
+        <label class="form-label">Nama Pembeli</label>
+        <input type="text" name="nama_pembeli" id="f-nama" class="form-input" list="daftar-pembeli-rencana"
+               autocomplete="off" placeholder="Nama pembeli..." required>
+        <datalist id="daftar-pembeli-rencana">
+          {% for n in nama_pembeli_list %}
+          <option value="{{ n }}">
+          {% endfor %}
+        </datalist>
+      </div>
+
+      <div style="margin-bottom:12px;">
+        <label class="form-label">No. HP / WhatsApp</label>
+        <input type="text" name="nomor_hp" id="f-hp" class="form-input" placeholder="contoh: 08123456789">
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+        <div>
+          <label class="form-label">Target (kg)</label>
+          <input type="number" name="target_kg" id="f-target" class="form-input" step="0.1" min="0" placeholder="0">
+        </div>
+        <div>
+          <label class="form-label">Harga/kg (opsional)</label>
+          <input type="number" name="harga_per_kg" id="f-harga" class="form-input" step="500" min="0" placeholder="0">
+        </div>
+      </div>
+
+      <div style="margin-bottom:16px;">
+        <label class="form-label">Catatan</label>
+        <input type="text" name="catatan" class="form-input" placeholder="opsional">
+      </div>
+
+      <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <button type="button" onclick="tutupModalTambah()" class="btn-secondary">Batal</button>
+        <button type="submit" class="btn-primary">Simpan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal Realisasi -->
+<div id="modal-realisasi" class="modal-overlay" style="display:none;" onclick="if(event.target===this)tutupModalRealisasi()">
+  <div style="background:#fff;border-radius:16px;padding:24px;width:100%;max-width:420px;">
+    <h3 style="font-size:15px;font-weight:700;color:#1B5E20;margin-bottom:16px;">Realisasi Penjualan</h3>
+    <form method="post" id="form-realisasi">
+      <input type="hidden" name="tanggal" id="r-tanggal">
+
+      <div style="margin-bottom:12px;">
+        <label class="form-label">Nama Pembeli</label>
+        <input type="text" name="nama_pembeli" id="r-nama" class="form-input" list="daftar-pembeli-rencana" required>
+      </div>
+
+      <div style="margin-bottom:12px;">
+        <label class="form-label">No. HP / WhatsApp</label>
+        <input type="text" name="nomor_hp" id="r-hp" class="form-input" placeholder="08123456789">
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+        <div>
+          <label class="form-label">Berat Aktual (kg)</label>
+          <input type="number" name="berat_kg" id="r-berat" class="form-input" step="0.1" min="0" required>
+        </div>
+        <div>
+          <label class="form-label">Harga/kg</label>
+          <input type="number" name="harga_per_kg" id="r-harga" class="form-input" step="500" min="0" required>
+        </div>
+      </div>
+
+      <div style="margin-bottom:16px;">
+        <label class="form-label">Status Bayar</label>
+        <select name="status_bayar" class="form-input">
+          <option value="lunas">Lunas</option>
+          <option value="hutang">Hutang</option>
+        </select>
+      </div>
+
+      <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <button type="button" onclick="tutupModalRealisasi()" class="btn-secondary">Batal</button>
+        <button type="submit" class="btn-primary">Simpan Penjualan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function bukaModalTambah(tanggal) {
+  document.getElementById('f-tanggal').value = tanggal;
+  const d = new Date(tanggal);
+  const hari = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'][d.getDay()];
+  document.getElementById('f-tanggal-display').value = hari + ', ' + tanggal;
+  document.getElementById('f-nama').value = '';
+  document.getElementById('f-hp').value = '';
+  document.getElementById('f-target').value = '';
+  document.getElementById('f-harga').value = '';
+  document.getElementById('modal-tambah').style.display = 'flex';
+}
+function tutupModalTambah() {
+  document.getElementById('modal-tambah').style.display = 'none';
+}
+function isiFormTambah(tanggal, nama, hp, avg_kg) {
+  bukaModalTambah(tanggal);
+  document.getElementById('f-nama').value = nama;
+  document.getElementById('f-hp').value = hp;
+  document.getElementById('f-target').value = avg_kg;
+}
+function bukaModalRealisasi(rid, tanggal, nama, hp, target_kg, harga) {
+  document.getElementById('form-realisasi').action = '/rencana-jual/' + rid + '/realisasi';
+  document.getElementById('r-tanggal').value = tanggal;
+  document.getElementById('r-nama').value = nama;
+  document.getElementById('r-hp').value = hp;
+  document.getElementById('r-berat').value = target_kg;
+  document.getElementById('r-harga').value = harga || '';
+  document.getElementById('modal-realisasi').style.display = 'flex';
+}
+function tutupModalRealisasi() {
+  document.getElementById('modal-realisasi').style.display = 'none';
+}
+</script>
+{% endblock %}

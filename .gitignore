@@ -29,3 +29,7 @@ uploads/
 # OS
 .DS_Store
 Thumbs.db
+
+# Runtime data
+data/photos/
+data/uploads/

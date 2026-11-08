@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+{% set active = "penggajian" %}
+{% block title %}Detail Gaji {{ karyawan.nama }}{% endblock %}
+{% block topbar_title %}Detail Penggajian — {{ karyawan.nama }}{% endblock %}
+
+{% block content %}
+<div style="max-width:700px;">
+
+  <!-- Filter bulan + back -->
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+    <a href="/penggajian?bulan={{ bulan }}" class="btn-secondary" style="font-size:12px;">
+      <svg style="width:14px;height:14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/></svg>
+      Kembali
+    </a>
+    <form method="get" style="display:flex;align-items:center;gap:8px;">
+      <input type="hidden" name="" value="">
+      <input type="month" name="bulan" value="{{ bulan }}" onchange="this.form.submit()"
+        style="border:1.5px solid #c8e6c9;border-radius:8px;padding:6px 10px;font-size:13px;color:#1B5E20;background:#f0fdf4;outline:none;">
+    </form>
+  </div>
+
+  <!-- Info karyawan -->
+  <div class="card" style="margin-bottom:14px;">
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+      <div style="background:#1B5E20;color:#fff;width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;flex-shrink:0;">
+        {{ karyawan.nama[0]|upper }}
+      </div>
+      <div style="flex:1;">
+        <div style="font-size:15px;font-weight:700;color:#1e293b;">{{ karyawan.nama }}</div>
+        <div style="font-size:12px;color:#64748b;">{{ karyawan.jabatan or karyawan.role }} • Masuk: {{ karyawan.tanggal_masuk_kerja or '—' }}</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:11px;color:#64748b;">Gaji Pokok</div>
+        <div style="font-size:16px;font-weight:800;color:#1B5E20;">{{ gaji.gaji_pokok|rp }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ringkasan Gaji -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-bottom:14px;">
+    <div class="stat-card" style="text-align:center;">
+      <div style="font-size:22px;font-weight:800;color:#475569;">{{ gaji.hari_kerja }}</div>
+      <div style="font-size:11px;color:#64748b;">Hari Kerja</div>
+    </div>
+    <div class="stat-card" style="text-align:center;">
+      <div style="font-size:22px;font-weight:800;color:#15803d;">{{ gaji.hadir }}</div>
+      <div style="font-size:11px;color:#64748b;">Hadir</div>
+    </div>
+    <div class="stat-card" style="text-align:center;">
+      <div style="font-size:22px;font-weight:800;color:#1d4ed8;">{{ gaji.toleransi }}</div>
+      <div style="font-size:11px;color:#64748b;">Izin/Toleransi</div>
+    </div>
+    <div class="stat-card" style="text-align:center;">
+      <div style="font-size:22px;font-weight:800;color:#b91c1c;">{{ gaji.alpha }}</div>
+      <div style="font-size:11px;color:#64748b;">Alpha (dipotong)</div>
+    </div>
+    <div class="stat-card" style="text-align:center;">
+      <div style="font-size:22px;font-weight:800;color:#b45309;">{{ gaji.terlambat }}</div>
+      <div style="font-size:11px;color:#64748b;">Terlambat</div>
+    </div>
+  </div>
+
+  <!-- Kalkulasi Gaji -->
+  <div class="card" style="margin-bottom:14px;">
+    <h3 style="font-size:13px;font-weight:700;color:#1B5E20;margin-bottom:12px;">Kalkulasi Gaji — {{ bulan }}</h3>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <div style="display:flex;justify-content:space-between;font-size:13px;">
+        <span style="color:#475569;">Gaji Pokok</span>
+        <span style="font-weight:600;">{{ gaji.gaji_pokok|rp }}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;">
+        <span style="color:#475569;">Potongan per Hari Alpha</span>
+        <span>{{ gaji.potongan_per_hari|int|rp }}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;">
+        <span style="color:#b91c1c;">Potongan ({{ gaji.alpha }} hari × {{ gaji.potongan_per_hari|int|rp }})</span>
+        <span style="color:#b91c1c;font-weight:600;">-{{ gaji.total_potongan|int|rp }}</span>
+      </div>
+      <div style="border-top:2px solid #e7f3e8;padding-top:10px;display:flex;justify-content:space-between;font-size:16px;font-weight:800;">
+        <span style="color:#1B5E20;">Gaji Bersih</span>
+        <span style="color:#1d4ed8;">{{ gaji.gaji_bersih|int|rp }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tandai Izin/Toleransi -->
+  <div class="card" style="margin-bottom:14px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+      <h3 style="font-size:13px;font-weight:700;color:#1B5E20;">Hari Izin / Toleransi</h3>
+      <button onclick="document.getElementById('form-izin').style.display='block'" class="btn-primary" style="font-size:12px;padding:6px 12px;">
+        + Tambah Izin
+      </button>
+    </div>
+
+    <!-- Form tambah izin -->
+    <div id="form-izin" style="display:none;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:12px;margin-bottom:12px;">
+      <form method="post" action="/penggajian/{{ karyawan.id }}/toleransi/tambah">
+        <input type="hidden" name="bulan" value="{{ bulan }}">
+        <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end;">
+          <div>
+            <label class="form-label">Tanggal</label>
+            <input type="date" name="tanggal" required class="form-input"
+              min="{{ bulan }}-01" max="{{ bulan }}-31">
+          </div>
+          <div>
+            <label class="form-label">Keterangan</label>
+            <select name="keterangan" class="form-input">
+              <option value="izin">Izin</option>
+              <option value="sakit">Sakit</option>
+              <option value="toleransi">Toleransi</option>
+              <option value="cuti">Cuti</option>
+              <option value="libur_nasional">Libur Nasional</option>
+            </select>
+          </div>
+          <div style="display:flex;gap:6px;">
+            <button type="submit" class="btn-primary" style="font-size:12px;padding:7px 14px;">Simpan</button>
+            <button type="button" onclick="document.getElementById('form-izin').style.display='none'" class="btn-secondary" style="font-size:12px;padding:7px 10px;">✕</button>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    {% if toleransi_map %}
+    <div style="display:flex;flex-wrap:wrap;gap:6px;">
+      {% for tgl, t in toleransi_map.items() %}
+      <div style="background:#dbeafe;border:1px solid #bfdbfe;border-radius:8px;padding:5px 10px;display:flex;align-items:center;gap:8px;font-size:12px;">
+        <span style="font-weight:600;color:#1d4ed8;">{{ tgl }}</span>
+        <span class="badge badge-blue" style="font-size:10px;">{{ t.keterangan }}</span>
+        <form method="post" action="/penggajian/{{ karyawan.id }}/toleransi/{{ t.id }}/hapus" style="display:inline;">
+          <input type="hidden" name="bulan" value="{{ bulan }}">
+          <button type="submit" style="background:none;border:none;color:#64748b;cursor:pointer;font-size:12px;padding:0;" title="Hapus">✕</button>
+        </form>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div style="font-size:12px;color:#94a3b8;">Belum ada hari izin/toleransi dicatat untuk bulan ini.</div>
+    {% endif %}
+  </div>
+
+  <!-- Riwayat Absensi Bulan Ini -->
+  {% if absen_map %}
+  <div class="card">
+    <h3 style="font-size:13px;font-weight:700;color:#1B5E20;margin-bottom:10px;">Riwayat Absen Masuk — {{ bulan }}</h3>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;">
+      {% for tgl, waktu in absen_map.items() %}
+      <div style="background:{% if waktu > '07:30' %}#fef9c3{% else %}#f0fdf4{% endif %};border:1px solid {% if waktu > '07:30' %}#fde68a{% else %}#bbf7d0{% endif %};border-radius:8px;padding:5px 10px;font-size:12px;text-align:center;">
+        <div style="font-weight:600;color:#1e293b;">{{ tgl[8:] }}</div>
+        <div style="color:{% if waktu > '07:30' %}#b45309{% else %}#15803d{% endif %};">{{ waktu }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

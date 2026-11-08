@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Absensi — Sistem Jamur Tiram</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { font-family: 'Inter', system-ui, sans-serif; background: #f0f4f0; min-height: 100vh; }
+  .btn-primary { display: inline-flex; align-items: center; gap: 6px; background: #2E7D32; color: #fff; font-size: 13px; font-weight: 600; padding: 8px 16px; border-radius: 9px; border: none; cursor: pointer; text-decoration: none; }
+  .btn-primary:hover { background: #1B5E20; }
+  .form-input { width: 100%; border: 1px solid #d1d5db; border-radius: 8px; padding: 8px 12px; font-size: 13px; color: #1e293b; outline: none; box-sizing: border-box; }
+  .form-input:focus { border-color: #2E7D32; box-shadow: 0 0 0 3px rgba(46,125,50,.1); }
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 16px; }
+  .card { background: #fff; border-radius: 14px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+</style>
+</head>
+<body>
+
+<!-- Topbar -->
+<div style="background:#1B5E20;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:30;">
+  <div style="display:flex;align-items:center;gap:10px;">
+    <span style="font-size:22px;">🍄</span>
+    <div>
+      <div style="font-size:14px;font-weight:800;color:#fff;">Sistem Jamur Tiram</div>
+      <div style="font-size:10px;color:#a5d6a7;">Absensi Karyawan</div>
+    </div>
+  </div>
+  <a href="/login" style="display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.15);color:#fff;font-size:12px;font-weight:600;padding:7px 14px;border-radius:8px;text-decoration:none;border:1px solid rgba(255,255,255,.25);">
+    <svg style="width:14px;height:14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+    Login
+  </a>
+</div>
+
+<div style="padding:20px;max-width:600px;margin:0 auto;">
+
+  <!-- Tanggal & Jam -->
+  <div style="text-align:center;margin-bottom:20px;">
+    <div style="font-size:13px;color:#64748b;">{{ now.strftime('%A, %d %B %Y') }}</div>
+    <div id="jam-sekarang" style="font-size:32px;font-weight:800;color:#1B5E20;letter-spacing:-1px;"></div>
+  </div>
+
+  <!-- Notif -->
+  {% set ok = request.query_params.get('ok','') %}
+  {% set err = request.query_params.get('err','') %}
+  {% set uid_param = request.query_params.get('uid','') %}
+  {% if ok %}
+  <div style="background:#dcfce7;border:1px solid #86efac;border-radius:10px;padding:12px 16px;margin-bottom:16px;color:#15803d;font-size:13px;font-weight:600;text-align:center;">
+    ✅ Absen {{ 'masuk' if ok=='masuk' else 'pulang' }} berhasil!
+  </div>
+  {% elif err == 'sudah_masuk' %}
+  <div style="background:#fef9c3;border:1px solid #fde047;border-radius:10px;padding:12px 16px;margin-bottom:16px;color:#854d0e;font-size:13px;font-weight:600;text-align:center;">
+    ⚠️ Sudah absen masuk hari ini.
+  </div>
+  {% elif err == 'sudah_keluar' %}
+  <div style="background:#fef9c3;border:1px solid #fde047;border-radius:10px;padding:12px 16px;margin-bottom:16px;color:#854d0e;font-size:13px;font-weight:600;text-align:center;">
+    ⚠️ Sudah absen pulang hari ini.
+  </div>
+  {% endif %}
+
+  <!-- Panduan Absen -->
+  <div style="background:#fff;border-radius:12px;padding:14px 16px;margin-bottom:16px;border:1.5px solid #bbf7d0;">
+    <div style="font-size:12px;font-weight:700;color:#1B5E20;margin-bottom:8px;">📋 Panduan & Ketentuan Absensi</div>
+    <div style="display:grid;gap:5px;font-size:12px;color:#374151;">
+      <div>✅ <b>Pilih nama kamu</b> lalu klik tombol Masuk atau Pulang</div>
+      <div>📸 <b>Foto selfie wajib</b> — ambil langsung dari kamera, tidak bisa pakai foto lama</div>
+      <div>🌅 <b>Absen masuk</b> maksimal sesuai jam yang ditetapkan — lebih dari itu dihitung terlambat</div>
+      <div>🌇 <b>Absen pulang</b> dilakukan saat meninggalkan lokasi kerja</div>
+      <div>⚠️ Tidak absen = tidak hadir dan akan mempengaruhi perhitungan gaji</div>
+    </div>
+  </div>
+
+  <!-- Daftar Karyawan -->
+  <div class="card">
+    <div style="font-size:13px;font-weight:700;color:#1B5E20;margin-bottom:14px;">Pilih nama kamu untuk absen:</div>
+    <div style="display:grid;gap:8px;">
+      {% for u in karyawan %}
+      {% set jam = jam_map.get(u.id, {'masuk':'07:30','pulang':'17:00'}) %}
+      {% set waktu_masuk = absen_masuk_map.get(u.id, '') %}
+      {% set waktu_keluar = absen_keluar_map.get(u.id, '') %}
+      {% set menit_telat = terlambat_map.get(u.id, 0) %}
+      {% set terlambat = menit_telat > 0 %}
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-radius:10px;border:1.5px solid {% if u.id in sudah_keluar %}#86efac{% elif terlambat %}#fca5a5{% elif u.id in sudah_masuk %}#93c5fd{% else %}#e2e8f0{% endif %};background:{% if u.id in sudah_keluar %}#f0fdf4{% elif terlambat %}#fff7f7{% elif u.id in sudah_masuk %}#eff6ff{% else %}#f8fafc{% endif %};">
+        <div>
+          <div style="font-size:13px;font-weight:700;color:#1B5E20;">{{ u.nama }}</div>
+          <div style="font-size:10px;color:#9ca3af;margin-top:1px;">
+            🕐 Masuk: <b>{{ jam.masuk }}</b> &nbsp;|&nbsp; 🕔 Pulang: <b>{{ jam.pulang }}</b>
+          </div>
+          <div style="font-size:11px;margin-top:4px;">
+            {% if u.id in sudah_keluar %}
+              <span style="color:#15803d;">✅ Masuk <b>{{ waktu_masuk[:5] }}</b></span>
+              {% if terlambat %}<span style="color:#dc2626;font-weight:600;margin-left:6px;">⚠️ Terlambat {{ menit_telat }} mnt</span>{% endif %}
+              &nbsp;·&nbsp;
+              <span style="color:#1d4ed8;">🌇 Pulang <b>{{ waktu_keluar[:5] }}</b></span>
+            {% elif u.id in sudah_masuk %}
+              <span style="color:{% if terlambat %}#dc2626{% else %}#1d4ed8{% endif %};font-weight:600;">
+                🌅 Masuk <b>{{ waktu_masuk[:5] }}</b>
+              </span>
+              {% if terlambat %}
+              <span style="color:#dc2626;font-weight:700;margin-left:6px;">⚠️ Terlambat {{ menit_telat }} mnt</span>
+              {% endif %}
+              <span style="color:#9ca3af;margin-left:6px;">— belum pulang</span>
+            {% else %}
+              <span style="color:#9ca3af;">⏳ Belum absen</span>
+            {% endif %}
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0;">
+          {% if u.id not in sudah_masuk %}
+          <button onclick="bukaModal('{{ u.id }}','{{ u.nama|e }}','masuk','{{ jam.masuk }}')"
+            style="background:#2E7D32;color:#fff;font-size:11px;font-weight:600;padding:6px 12px;border-radius:7px;border:none;cursor:pointer;">
+            🌅 Masuk
+          </button>
+          {% endif %}
+          {% if u.id in sudah_masuk and u.id not in sudah_keluar %}
+          <button onclick="bukaModal('{{ u.id }}','{{ u.nama|e }}','keluar','{{ jam.pulang }}')"
+            style="background:#1565C0;color:#fff;font-size:11px;font-weight:600;padding:6px 12px;border-radius:7px;border:none;cursor:pointer;">
+            🌇 Pulang
+          </button>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+      {% if not karyawan %}
+      <div style="text-align:center;color:#9ca3af;font-size:13px;padding:20px;">
+        Belum ada karyawan terdaftar.
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+
+<!-- Modal Absen -->
+<div id="modal-absen" class="modal-overlay" style="display:none;">
+  <div style="background:#fff;border-radius:18px;width:100%;max-width:380px;padding:24px;">
+    <div style="text-align:center;margin-bottom:16px;">
+      <div id="modal-icon" style="font-size:36px;margin-bottom:6px;"></div>
+      <div id="modal-title" style="font-size:16px;font-weight:800;color:#1B5E20;"></div>
+      <div id="modal-sub" style="font-size:12px;color:#64748b;margin-top:2px;"></div>
+      <div id="modal-jam" style="font-size:11px;color:#2E7D32;font-weight:600;margin-top:4px;background:#f0fdf4;padding:4px 10px;border-radius:6px;display:inline-block;"></div>
+    </div>
+    <form method="post" action="/absen/kiosk" enctype="multipart/form-data" id="form-kiosk" onsubmit="return submitAbsen(event)">
+      <input type="hidden" name="user_id" id="kiosk-uid">
+      <input type="hidden" name="tipe" id="kiosk-tipe">
+      <input type="hidden" name="latitude" id="kiosk-lat">
+      <input type="hidden" name="longitude" id="kiosk-lon">
+
+      <!-- Input kamera tersembunyi -->
+      <input type="file" id="input-kamera" accept="image/*" capture="user" style="display:none;">
+      <!-- Canvas untuk kompres (tersembunyi) -->
+      <canvas id="canvas-kompres" style="display:none;"></canvas>
+      <!-- Preview foto -->
+      <div id="foto-preview" style="display:none;text-align:center;margin-bottom:12px;">
+        <img id="preview-img" style="max-width:100%;max-height:200px;border-radius:10px;border:2px solid #2E7D32;object-fit:cover;">
+        <div style="font-size:11px;color:#15803d;margin-top:4px;" id="foto-size-info"></div>
+      </div>
+      <!-- Tombol ambil foto -->
+      <button type="button" id="btn-ambil-foto" onclick="ambilFoto()"
+        style="width:100%;padding:12px;border-radius:9px;border:2px dashed #2E7D32;background:#f0fdf4;color:#2E7D32;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:10px;">
+        📸 Ambil Foto Selfie
+      </button>
+
+      <div id="gps-info" style="font-size:11px;color:#6b7280;margin-bottom:12px;min-height:16px;"></div>
+      <div style="display:flex;gap:8px;">
+        <button type="button" onclick="tutupModal()"
+          style="flex:1;padding:11px;border-radius:9px;border:1px solid #e2e8f0;background:#f8fafc;color:#374151;font-size:13px;font-weight:600;cursor:pointer;">
+          Batal
+        </button>
+        <button type="submit" id="btn-submit-kiosk" disabled
+          style="flex:2;padding:11px;border-radius:9px;border:none;background:#94a3b8;color:#fff;font-size:13px;font-weight:700;cursor:not-allowed;">
+          Konfirmasi Absen
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+let fotoBlob = null;
+
+// Jam berjalan
+function updateJam() {
+  const d = new Date();
+  const h = String(d.getHours()).padStart(2,'0');
+  const m = String(d.getMinutes()).padStart(2,'0');
+  const s = String(d.getSeconds()).padStart(2,'0');
+  document.getElementById('jam-sekarang').textContent = h + ':' + m + ':' + s;
+}
+updateJam();
+setInterval(updateJam, 1000);
+
+function bukaModal(uid, nama, tipe, jam) {
+  fotoBlob = null;
+  document.getElementById('kiosk-uid').value = uid;
+  document.getElementById('kiosk-tipe').value = tipe;
+  document.getElementById('modal-icon').textContent = tipe === 'masuk' ? '🌅' : '🌇';
+  document.getElementById('modal-title').textContent = nama;
+  document.getElementById('modal-sub').textContent = tipe === 'masuk' ? 'Absen Masuk' : 'Absen Pulang';
+  document.getElementById('modal-jam').textContent = tipe === 'masuk' ? '⏰ Batas masuk: ' + jam : '⏰ Jam pulang: ' + jam;
+  const warna = tipe === 'masuk' ? '#2E7D32' : '#1565C0';
+  document.getElementById('btn-submit-kiosk').style.background = '#94a3b8';
+  document.getElementById('btn-submit-kiosk').disabled = true;
+  document.getElementById('btn-submit-kiosk').style.cursor = 'not-allowed';
+  document.getElementById('foto-preview').style.display = 'none';
+  document.getElementById('btn-ambil-foto').style.borderColor = warna;
+  document.getElementById('btn-ambil-foto').style.color = warna;
+  document.getElementById('modal-absen').style.display = 'flex';
+
+  // GPS kondisional
+  if (navigator.geolocation) {
+    document.getElementById('gps-info').textContent = '📍 Mencari lokasi...';
+    navigator.geolocation.getCurrentPosition(
+      function(pos) {
+        document.getElementById('kiosk-lat').value = pos.coords.latitude;
+        document.getElementById('kiosk-lon').value = pos.coords.longitude;
+        document.getElementById('gps-info').textContent = '📍 ' + pos.coords.latitude.toFixed(5) + ', ' + pos.coords.longitude.toFixed(5);
+      },
+      function() { document.getElementById('gps-info').textContent = ''; },
+      {timeout: 8000}
+    );
+  }
+}
+
+function ambilFoto() {
+  document.getElementById('input-kamera').value = '';
+  document.getElementById('input-kamera').click();
+}
+
+document.getElementById('input-kamera').addEventListener('change', function() {
+  const file = this.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const img = new Image();
+    img.onload = function() {
+      // Kompres ke max 800px, quality 75%
+      const MAX = 800;
+      let w = img.width, h = img.height;
+      if (w > h) { if (w > MAX) { h = h * MAX / w; w = MAX; } }
+      else        { if (h > MAX) { w = w * MAX / h; h = MAX; } }
+      const canvas = document.getElementById('canvas-kompres');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      canvas.toBlob(function(blob) {
+        fotoBlob = blob;
+        const kb = Math.round(blob.size / 1024);
+        const url = URL.createObjectURL(blob);
+        document.getElementById('preview-img').src = url;
+        document.getElementById('foto-size-info').textContent = '✅ Foto siap (' + kb + ' KB)';
+        document.getElementById('foto-preview').style.display = 'block';
+        document.getElementById('btn-ambil-foto').textContent = '🔄 Ambil Ulang';
+        // Aktifkan tombol submit
+        const tipe = document.getElementById('kiosk-tipe').value;
+        const btn = document.getElementById('btn-submit-kiosk');
+        btn.style.background = tipe === 'masuk' ? '#2E7D32' : '#1565C0';
+        btn.disabled = false;
+        btn.style.cursor = 'pointer';
+      }, 'image/jpeg', 0.75);
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+});
+
+function submitAbsen(e) {
+  e.preventDefault();
+  if (!fotoBlob) { alert('Foto wajib diambil!'); return false; }
+  const form = document.getElementById('form-kiosk');
+  const data = new FormData(form);
+  data.set('foto', fotoBlob, 'absen.jpg');
+  const btn = document.getElementById('btn-submit-kiosk');
+  btn.disabled = true;
+  btn.textContent = 'Mengirim...';
+  fetch('/absen/kiosk', { method: 'POST', body: data })
+    .then(r => { window.location.href = r.url; })
+    .catch(() => { btn.disabled = false; btn.textContent = 'Konfirmasi Absen'; });
+  return false;
+}
+
+function tutupModal() {
+  fotoBlob = null;
+  document.getElementById('modal-absen').style.display = 'none';
+  document.getElementById('kiosk-lat').value = '';
+  document.getElementById('kiosk-lon').value = '';
+  document.getElementById('btn-ambil-foto').textContent = '📸 Ambil Foto Selfie';
+}
+</script>
+</body>
+</html>

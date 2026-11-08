@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% set active = "absensi_admin" %}
+{% block title %}Rekap Absensi — Jamur Tiram{% endblock %}
+{% block topbar_title %}Rekap Absensi Karyawan{% endblock %}
+
+{% block content %}
+<!-- Filter Tanggal -->
+<form method="get" style="display:flex;gap:8px;align-items:center;margin-bottom:16px;flex-wrap:wrap;">
+  <input type="date" name="tanggal" value="{{ tanggal }}" class="form-input" style="width:auto;">
+  <button type="submit" class="btn-primary">Tampilkan</button>
+  {% if tanggal != today %}
+  <a href="/absen/admin" class="btn-secondary">Hari Ini</a>
+  {% endif %}
+</form>
+
+<!-- Ringkasan -->
+{% set total_user = semua_user | length %}
+{% set hadir = absen_map | length %}
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;">
+  <div class="stat-card" style="text-align:center;">
+    <div style="font-size:22px;font-weight:800;color:#1B5E20;">{{ total_user }}</div>
+    <div style="font-size:11px;color:#64748b;">Total Karyawan</div>
+  </div>
+  <div class="stat-card" style="text-align:center;">
+    <div style="font-size:22px;font-weight:800;color:#15803d;">{{ hadir }}</div>
+    <div style="font-size:11px;color:#64748b;">Hadir</div>
+  </div>
+  <div class="stat-card" style="text-align:center;">
+    <div style="font-size:22px;font-weight:800;color:#b91c1c;">{{ total_user - hadir }}</div>
+    <div style="font-size:11px;color:#64748b;">Tidak Hadir</div>
+  </div>
+</div>
+
+<!-- Tabel Absensi -->
+<div class="card" style="margin-bottom:16px;">
+  <div style="font-size:13px;font-weight:700;color:#1B5E20;margin-bottom:12px;">Detail Absensi — {{ tanggal }}</div>
+  <div style="overflow-x:auto;">
+    <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:600px;">
+      <thead>
+        <tr style="border-bottom:1.5px solid #e7f3e8;">
+          <th style="text-align:left;padding:8px 10px;color:#64748b;">Nama</th>
+          <th style="text-align:center;padding:8px 10px;color:#64748b;">Masuk</th>
+          <th style="text-align:center;padding:8px 10px;color:#64748b;">Foto Masuk</th>
+          <th style="text-align:center;padding:8px 10px;color:#64748b;">Pulang</th>
+          <th style="text-align:center;padding:8px 10px;color:#64748b;">Foto Pulang</th>
+          <th style="text-align:center;padding:8px 10px;color:#64748b;">Lokasi</th>
+          <th style="text-align:center;padding:8px 10px;color:#64748b;">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in semua_user %}
+        {% if u.role not in ('admin', 'owner') %}
+        {% set data = absen_map.get(u.id) %}
+        <tr style="border-bottom:1px solid #f0f4f0;">
+          <td style="padding:10px 10px;font-weight:600;">
+            {{ u.nama }}
+            <div style="font-size:10px;color:#9ca3af;">{{ u.role }}</div>
+          </td>
+          <td style="padding:10px 10px;text-align:center;font-weight:600;">
+            {% if data and data.masuk %}
+              <span style="color:{% if data.masuk.waktu <= '07:30:00' %}#15803d{% else %}#b45309{% endif %};">
+                {{ data.masuk.waktu[:5] }}
+              </span>
+              {% if data.masuk.waktu > '07:30:00' %}
+                <div style="font-size:10px;color:#b45309;">Terlambat</div>
+              {% endif %}
+            {% else %}—{% endif %}
+          </td>
+          <td style="padding:10px 10px;text-align:center;">
+            {% if data and data.masuk and data.masuk.foto_path %}
+            <a href="/photos/{{ data.masuk.foto_path }}" target="_blank">
+              <img src="/photos/{{ data.masuk.foto_path }}" style="width:44px;height:44px;object-fit:cover;border-radius:8px;border:1px solid #e2e8f0;">
+            </a>
+            {% else %}—{% endif %}
+          </td>
+          <td style="padding:10px 10px;text-align:center;font-weight:600;">
+            {% if data and data.keluar %}
+              {{ data.keluar.waktu[:5] }}
+            {% else %}—{% endif %}
+          </td>
+          <td style="padding:10px 10px;text-align:center;">
+            {% if data and data.keluar and data.keluar.foto_path %}
+            <a href="/photos/{{ data.keluar.foto_path }}" target="_blank">
+              <img src="/photos/{{ data.keluar.foto_path }}" style="width:44px;height:44px;object-fit:cover;border-radius:8px;border:1px solid #e2e8f0;">
+            </a>
+            {% else %}—{% endif %}
+          </td>
+          <td style="padding:10px 10px;text-align:center;font-size:10px;color:#6b7280;">
+            {% if data and data.masuk and data.masuk.latitude %}
+            <a href="https://maps.google.com/?q={{ data.masuk.latitude }},{{ data.masuk.longitude }}" target="_blank" style="color:#1d4ed8;">📍 Lihat</a>
+            {% else %}—{% endif %}
+          </td>
+          <td style="padding:10px 10px;text-align:center;">
+            {% if not data %}
+              <span class="badge badge-red">Tidak Hadir</span>
+            {% elif data.masuk and data.keluar %}
+              <span class="badge badge-green">Lengkap</span>
+            {% elif data.masuk %}
+              <span class="badge badge-yellow">Masuk Saja</span>
+            {% else %}
+              <span class="badge badge-gray">-</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endif %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

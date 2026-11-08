@@ -1,0 +1,328 @@
+{% extends "base.html" %}
+{% set active = "laporan_harian" %}
+{% block title %}Laporan Harian — Jamur Tiram{% endblock %}
+{% block topbar_title %}Laporan Harian{% endblock %}
+
+{% block content %}
+{% set ok = request.query_params.get('ok','') %}
+{% if ok %}
+<div style="background:#dcfce7;border:1px solid #86efac;border-radius:10px;padding:12px 16px;margin-bottom:16px;color:#15803d;font-size:13px;font-weight:600;">
+  ✅ Laporan berhasil disimpan.
+</div>
+{% endif %}
+
+<!-- Filter Tanggal -->
+<form method="get" style="display:flex;gap:8px;align-items:center;margin-bottom:16px;flex-wrap:wrap;">
+  <input type="date" name="tanggal" value="{{ tanggal }}" class="form-input" style="width:auto;">
+  <button type="submit" class="btn-primary">Tampilkan</button>
+  {% if tanggal != today %}
+  <a href="/laporan-harian" class="btn-secondary">Hari Ini</a>
+  {% endif %}
+</form>
+
+<!-- Form Input Laporan -->
+<div class="card" style="margin-bottom:16px;">
+  <div style="font-size:13px;font-weight:700;color:#1B5E20;margin-bottom:14px;">
+    {% if my_laporan %}✏️ Edit Laporan — {{ tanggal }}{% else %}📝 Input Laporan — {{ tanggal }}{% endif %}
+  </div>
+  <form method="post" action="/laporan-harian/simpan" enctype="multipart/form-data">
+    <input type="hidden" name="tanggal" value="{{ tanggal }}">
+    <div style="display:grid;gap:12px;">
+
+      <!-- Jenis Kegiatan -->
+      <div>
+        <label class="form-label">Jenis Kegiatan *</label>
+        <select name="jenis_kegiatan" id="jenis_kegiatan" required class="form-input" onchange="updateSections()">
+          <option value="">— Pilih kegiatan hari ini —</option>
+          {% for jk in jenis_kegiatan %}
+          <option value="{{ jk }}" {% if my_laporan and my_laporan.jenis_kegiatan==jk %}selected{% endif %}>{{ jk }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Batch (muncul untuk kegiatan produksi) -->
+      <div id="section-batch" style="display:none;">
+        <label class="form-label">Batch Produksi *</label>
+        <select name="batch_id" class="form-input">
+          <option value="">— Pilih batch —</option>
+          {% for b in batches %}
+          <option value="{{ b.id }}" {% if my_laporan and my_laporan.batch_id==b.id %}selected{% endif %}>
+            {{ b.kode }}{% if b.nama %} — {{ b.nama }}{% endif %} ({{ b.status }})
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- PENGADUKAN MEDIA -->
+      <div id="section-pengadukan" class="kegiatan-section" style="display:none;">
+        <div style="background:#fef9c3;border:1px solid #fbbf24;border-radius:10px;padding:14px;">
+          <div style="font-size:12px;font-weight:700;color:#92400e;margin-bottom:10px;">📊 Detail Pengadukan Media</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div>
+              <label class="form-label">Serbuk Kayu (angkong)</label>
+              <input name="serbuk_angkong" type="number" min="0" class="form-input"
+                value="{{ (my_laporan.detail_json | fromjson).serbuk_angkong if my_laporan and my_laporan.detail_json else '' }}"
+                placeholder="0">
+              <div style="font-size:10px;color:#6b7280;margin-top:2px;">Dicatat saja, tidak kurangi stok</div>
+            </div>
+            <div>
+              <label class="form-label">Bekatul/Dedak (kg)
+                {% if bahan_stok.get('Dedak/Bekatul') %}
+                <span style="color:#1d4ed8;font-weight:400;">stok: {{ bahan_stok['Dedak/Bekatul'].stok | float2 }} kg</span>
+                {% endif %}
+              </label>
+              <input name="bekatul_kg" type="number" min="0" step="0.5" class="form-input"
+                value="{{ (my_laporan.detail_json | fromjson).bekatul_kg if my_laporan and my_laporan.detail_json else '' }}"
+                placeholder="0">
+            </div>
+            <div>
+              <label class="form-label">Kapur (kg)
+                {% if bahan_stok.get('Kapur') %}
+                <span style="color:#1d4ed8;font-weight:400;">stok: {{ bahan_stok['Kapur'].stok | float2 }} kg</span>
+                {% endif %}
+              </label>
+              <input name="kapur_kg" type="number" min="0" step="0.5" class="form-input"
+                value="{{ (my_laporan.detail_json | fromjson).kapur_kg if my_laporan and my_laporan.detail_json else '' }}"
+                placeholder="0">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PENGISIAN BAGLOG -->
+      <div id="section-pengisian" class="kegiatan-section" style="display:none;">
+        <div style="background:#eff6ff;border:1px solid #93c5fd;border-radius:10px;padding:14px;">
+          <div style="font-size:12px;font-weight:700;color:#1e3a8a;margin-bottom:10px;">📦 Detail Pengisian Baglog</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div>
+              <label class="form-label">Jumlah Baglog (pcs)</label>
+              <input name="jumlah_baglog" type="number" min="0" class="form-input"
+                value="{{ (my_laporan.detail_json | fromjson).jumlah_baglog if my_laporan and my_laporan.detail_json else '' }}"
+                placeholder="0">
+            </div>
+            <div>
+              <label class="form-label">Plastik (pcs)
+                {% if bahan_stok.get('Plastik Baglog') %}
+                <span style="color:#1d4ed8;font-weight:400;">stok: {{ bahan_stok['Plastik Baglog'].stok | int }}</span>
+                {% endif %}
+              </label>
+              <input name="plastik_pcs" type="number" min="0" class="form-input"
+                value="{{ (my_laporan.detail_json | fromjson).plastik_pcs if my_laporan and my_laporan.detail_json else '' }}"
+                placeholder="0">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STERILISASI -->
+      <div id="section-sterilisasi" class="kegiatan-section" style="display:none;">
+        <div style="background:#fff1f2;border:1px solid #fda4af;border-radius:10px;padding:14px;">
+          <div style="font-size:12px;font-weight:700;color:#9f1239;margin-bottom:10px;">🔥 Detail Sterilisasi</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div>
+              <label class="form-label">Jumlah Baglog Disteril</label>
+              <input name="jumlah_baglog" type="number" min="0" class="form-input"
+                value="{{ (my_laporan.detail_json | fromjson).jumlah_baglog if my_laporan and my_laporan.detail_json else '' }}"
+                placeholder="0">
+            </div>
+            <div>
+              <label class="form-label">Kayu Bakar (kg)
+                {% if bahan_stok.get('Kayu Bakar') %}
+                <span style="color:#1d4ed8;font-weight:400;">stok: {{ bahan_stok['Kayu Bakar'].stok | float2 }} kg</span>
+                {% endif %}
+              </label>
+              <input name="kayu_bakar_kg" type="number" min="0" step="0.5" class="form-input"
+                value="{{ (my_laporan.detail_json | fromjson).kayu_bakar_kg if my_laporan and my_laporan.detail_json else '' }}"
+                placeholder="0">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PEMBIBITAN / INOKULASI -->
+      <div id="section-pembibitan" class="kegiatan-section" style="display:none;">
+        <div style="background:#f5f3ff;border:1px solid #c4b5fd;border-radius:10px;padding:14px;">
+          <div style="font-size:12px;font-weight:700;color:#4c1d95;margin-bottom:10px;">🧫 Detail Pembibitan (Inokulasi)</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div>
+              <label class="form-label">Jumlah Baglog Dibibit</label>
+              <input name="jumlah_baglog" type="number" min="0" class="form-input"
+                value="{{ (my_laporan.detail_json | fromjson).jumlah_baglog if my_laporan and my_laporan.detail_json else '' }}"
+                placeholder="0">
+            </div>
+            <div>
+              <label class="form-label">Jenis Bibit</label>
+              <input name="jenis_bibit" class="form-input"
+                value="{{ (my_laporan.detail_json | fromjson).jenis_bibit if my_laporan and my_laporan.detail_json else '' }}"
+                placeholder="Misal: F2 Tiram Putih">
+            </div>
+            <div>
+              <label class="form-label">Bibit Digunakan (botol)
+                {% if bahan_stok.get('Bibit Jamur') %}
+                <span style="color:#1d4ed8;font-weight:400;">stok: {{ bahan_stok['Bibit Jamur'].stok | float2 }} botol</span>
+                {% endif %}
+              </label>
+              <input name="bibit_botol" type="number" min="0" step="0.5" class="form-input"
+                value="{{ (my_laporan.detail_json | fromjson).bibit_botol if my_laporan and my_laporan.detail_json else '' }}"
+                placeholder="0">
+            </div>
+            <div>
+              <label class="form-label">Alkohol (liter)
+                {% if bahan_stok.get('Alkohol') %}
+                <span style="color:#1d4ed8;font-weight:400;">stok: {{ bahan_stok['Alkohol'].stok | float2 }} ltr</span>
+                {% endif %}
+              </label>
+              <input name="alkohol_liter" type="number" min="0" step="0.1" class="form-input"
+                value="{{ (my_laporan.detail_json | fromjson).alkohol_liter if my_laporan and my_laporan.detail_json else '' }}"
+                placeholder="0">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Catatan -->
+      <div>
+        <label class="form-label">Catatan Kegiatan *</label>
+        <textarea name="isi" required rows="3" class="form-input" style="resize:vertical;"
+          placeholder="Jelaskan apa yang dikerjakan, kendala, hasil, dll...">{% if my_laporan %}{{ my_laporan.isi }}{% endif %}</textarea>
+      </div>
+
+      <!-- Foto Bukti -->
+      <div>
+        <label class="form-label">📸 Foto Bukti Kegiatan</label>
+        {% if my_laporan and my_laporan.foto_path %}
+        <div style="margin-bottom:8px;">
+          <a href="/photos/{{ my_laporan.foto_path }}" target="_blank">
+            <img src="/photos/{{ my_laporan.foto_path }}" style="height:80px;border-radius:8px;border:1px solid #e2e8f0;object-fit:cover;">
+          </a>
+          <div style="font-size:10px;color:#6b7280;margin-top:4px;">Foto sebelumnya — ambil baru untuk mengganti</div>
+        </div>
+        {% endif %}
+        <input type="file" id="laporan-kamera" accept="image/*" capture="environment" style="display:none;">
+        <canvas id="laporan-canvas" style="display:none;"></canvas>
+        <div id="laporan-preview" style="display:none;margin-bottom:8px;">
+          <img id="laporan-preview-img" style="max-width:100%;max-height:180px;border-radius:8px;border:2px solid #2E7D32;object-fit:cover;">
+          <div id="laporan-size-info" style="font-size:11px;color:#15803d;margin-top:4px;"></div>
+        </div>
+        <button type="button" onclick="document.getElementById('laporan-kamera').click()"
+          style="width:100%;padding:10px;border-radius:8px;border:2px dashed #2E7D32;background:#f0fdf4;color:#2E7D32;font-size:13px;font-weight:600;cursor:pointer;">
+          📷 Ambil Foto dari Kamera
+        </button>
+      </div>
+
+    </div>
+    <div style="margin-top:16px;">
+      <button type="submit" id="btn-simpan-laporan" class="btn-primary" style="padding:10px 24px;">💾 Simpan Laporan</button>
+    </div>
+  </form>
+</div>
+
+<!-- Laporan Tim Hari Ini -->
+{% if laporan_list %}
+<div class="card">
+  <div style="font-size:13px;font-weight:700;color:#1B5E20;margin-bottom:12px;">📋 Laporan Tim — {{ tanggal }}</div>
+  <div style="display:grid;gap:12px;">
+    {% for l in laporan_list %}
+    {% set detail = l.detail_json | fromjson if l.detail_json else {} %}
+    <div style="background:#f8fafc;border-radius:10px;padding:14px;border-left:3px solid #2E7D32;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;flex-wrap:wrap;gap:6px;">
+        <div>
+          <span style="font-size:13px;font-weight:700;color:#1B5E20;">{{ l.nama }}</span>
+          {% if l.jenis_kegiatan %}
+          <span class="badge badge-blue" style="margin-left:6px;">{{ l.jenis_kegiatan }}</span>
+          {% endif %}
+        </div>
+        <span style="font-size:10px;color:#9ca3af;">{{ l.tanggal }}</span>
+      </div>
+      {% if l.jenis_kegiatan == "Pengadukan Media" and detail %}
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;">
+        {% if detail.serbuk_angkong %}<span class="badge badge-yellow">🌾 {{ detail.serbuk_angkong }} angkong serbuk</span>{% endif %}
+        {% if detail.bekatul_kg %}<span class="badge badge-yellow">Bekatul {{ detail.bekatul_kg }} kg</span>{% endif %}
+        {% if detail.kapur_kg %}<span class="badge badge-yellow">Kapur {{ detail.kapur_kg }} kg</span>{% endif %}
+      </div>
+      {% elif l.jenis_kegiatan in ("Pengisian Baglog","Sterilisasi","Pembibitan (Inokulasi)") and detail %}
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;">
+        {% if detail.jumlah_baglog %}<span class="badge badge-blue">📦 {{ detail.jumlah_baglog }} baglog</span>{% endif %}
+        {% if detail.plastik_pcs %}<span class="badge badge-gray">Plastik {{ detail.plastik_pcs }} pcs</span>{% endif %}
+        {% if detail.kayu_bakar_kg %}<span class="badge badge-red">Kayu {{ detail.kayu_bakar_kg }} kg</span>{% endif %}
+        {% if detail.bibit_botol %}<span class="badge badge-purple">Bibit {{ detail.bibit_botol }} botol</span>{% endif %}
+        {% if detail.alkohol_liter %}<span class="badge badge-gray">Alkohol {{ detail.alkohol_liter }} ltr</span>{% endif %}
+        {% if detail.jenis_bibit %}<span class="badge badge-purple">{{ detail.jenis_bibit }}</span>{% endif %}
+      </div>
+      {% endif %}
+      <div style="font-size:13px;color:#374151;white-space:pre-wrap;margin-bottom:8px;">{{ l.isi }}</div>
+      {% if l.foto_path %}
+      <a href="/photos/{{ l.foto_path }}" target="_blank">
+        <img src="/photos/{{ l.foto_path }}" style="max-width:200px;max-height:150px;border-radius:8px;border:1px solid #e2e8f0;object-fit:cover;">
+      </a>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% else %}
+<div class="card" style="text-align:center;padding:24px;color:#9ca3af;font-size:13px;">
+  Belum ada laporan untuk tanggal ini.
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+const PROD_KEGIATAN = ["Pengadukan Media","Pengisian Baglog","Sterilisasi","Pembibitan (Inokulasi)"];
+const SECTION_MAP = {
+  "Pengadukan Media":       "section-pengadukan",
+  "Pengisian Baglog":       "section-pengisian",
+  "Sterilisasi":            "section-sterilisasi",
+  "Pembibitan (Inokulasi)": "section-pembibitan",
+};
+
+function updateSections() {
+  const kegiatan = document.getElementById('jenis_kegiatan').value;
+  document.querySelectorAll('.kegiatan-section').forEach(el => el.style.display = 'none');
+  document.getElementById('section-batch').style.display = PROD_KEGIATAN.includes(kegiatan) ? 'block' : 'none';
+  if (SECTION_MAP[kegiatan]) document.getElementById(SECTION_MAP[kegiatan]).style.display = 'block';
+}
+document.addEventListener('DOMContentLoaded', updateSections);
+
+let laporanFotoBlob = null;
+document.getElementById('laporan-kamera').addEventListener('change', function() {
+  const file = this.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const img = new Image();
+    img.onload = function() {
+      const MAX = 1024;
+      let w = img.width, h = img.height;
+      if (w > h) { if (w > MAX) { h = h*MAX/w; w = MAX; } }
+      else        { if (h > MAX) { w = w*MAX/h; h = MAX; } }
+      const canvas = document.getElementById('laporan-canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      canvas.toBlob(function(blob) {
+        laporanFotoBlob = blob;
+        const kb = Math.round(blob.size/1024);
+        document.getElementById('laporan-preview-img').src = URL.createObjectURL(blob);
+        document.getElementById('laporan-size-info').textContent = '✅ Foto siap (' + kb + ' KB)';
+        document.getElementById('laporan-preview').style.display = 'block';
+      }, 'image/jpeg', 0.80);
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+});
+
+document.querySelector('form[action="/laporan-harian/simpan"]').addEventListener('submit', function(e) {
+  if (!laporanFotoBlob) return;
+  e.preventDefault();
+  const data = new FormData(this);
+  data.set('foto', laporanFotoBlob, 'laporan.jpg');
+  const btn = document.getElementById('btn-simpan-laporan');
+  btn.disabled = true; btn.textContent = 'Menyimpan...';
+  fetch('/laporan-harian/simpan', { method: 'POST', body: data })
+    .then(r => { window.location.href = r.url; })
+    .catch(() => { btn.disabled = false; btn.textContent = '💾 Simpan Laporan'; });
+});
+</script>
+{% endblock %}
